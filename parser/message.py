@@ -13,11 +13,20 @@ class Message:
     def __init__(self, msg_id: int, msg: email.message.Message):
         self.id = msg_id
         self.subject = self._get_header(msg, 'Subject', '(No subject)')
+        self.normalized_subject = self._normalize_subject(self.subject)
         self.sender_name, self.sender_email = parseaddr(msg['From'])
         self.date = self._parse_date(msg)
         self.references = self._get_references(msg)
         self.html_content = self._extract_content(msg)
         self.url = f'messages/{self.id}.html'
+        
+    @staticmethod
+    def _normalize_subject(subject: str) -> str:
+        """Normalize thread subject by removing 'Re:' and extra whitespace."""
+        if not subject:
+            return ''
+        # Remove 'Re:', 'Fwd:', etc. and extra whitespace
+        return subject.lstrip("Re: ").lstrip("RE: ").lstrip("Fwd: ").lstrip("FWD: ").strip()
 
     @staticmethod
     def _get_header(msg: email.message.Message, header: str, default: str = '') -> str:
