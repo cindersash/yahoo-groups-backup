@@ -1,0 +1,204 @@
+# CSS styles for the static website
+CSS_STYLES = """
+/* Basic styling for the archive */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.message {
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background-color: #fff;
+}
+
+.message-header {
+    border-bottom: 1px solid #e1e4e8;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
+
+.message-subject {
+    font-size: 1.2em;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+}
+
+.message-meta {
+    color: #6a737d;
+    font-size: 0.9em;
+}
+
+.message-content {
+    line-height: 1.6;
+}
+
+.message-content img {
+    max-width: 100%;
+    height: auto;
+}
+
+.plaintext-content {
+    white-space: pre-wrap;
+    font-family: monospace;
+}
+
+a {
+    color: #0366d6;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Navigation */
+.pagination {
+    margin: 20px 0;
+    text-align: center;
+}
+
+.pagination a, .pagination span {
+    padding: 8px 16px;
+    margin: 0 4px;
+    border: 1px solid #e1e4e8;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.pagination a:hover {
+    background-color: #f6f8fa;
+}
+
+/* Search */
+.search-container {
+    margin: 20px 0;
+    text-align: center;
+}
+
+#search-input {
+    padding: 8px 12px;
+    width: 300px;
+    max-width: 100%;
+    border: 1px solid #e1e4e8;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    .message {
+        padding: 12px;
+    }
+}
+"""
+
+# JavaScript for client-side functionality
+JAVASCRIPT_CODE = """
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('search-input');
+    const searchResults = document.getElementById('search-results');
+    
+    if (searchInput && searchResults) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            if (query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            
+            fetch(`search/search_index.json`)
+                .then(response => response.json())
+                .then(data => {
+                    const results = data.messages.filter(message => 
+                        message.subject.toLowerCase().includes(query) ||
+                        message.sender_name.toLowerCase().includes(query) ||
+                        message.content.toLowerCase().includes(query)
+                    );
+                    
+                    displayResults(results);
+                })
+                .catch(error => {
+                    console.error('Error loading search index:', error);
+                });
+        });
+    }
+    
+    function displayResults(results) {
+        const searchResults = document.getElementById('search-results');
+        
+        if (results.length === 0) {
+            searchResults.innerHTML = '<p>No results found.</p>';
+            searchResults.style.display = 'block';
+            return;
+        }
+        
+        let html = '<div class="search-results">';
+        html += `<p>Found ${results.length} result${results.length === 1 ? '' : 's'}:</p>`;
+        
+        results.forEach(result => {
+            const date = new Date(result.date).toLocaleDateString();
+            const excerpt = result.content.substring(0, 200) + 
+                (result.content.length > 200 ? '...' : '');
+            
+            html += `
+            <div class="search-result">
+                <h3><a href="${result.url}">${result.subject}</a></h3>
+                <div class="search-meta">
+                    From: ${result.sender_name} | Date: ${date}
+                </div>
+                <div class="search-excerpt">${excerpt}</div>
+            </div>
+            `;
+        });
+        
+        html += '</div>';
+        searchResults.innerHTML = html;
+        searchResults.style.display = 'block';
+    }
+});
+"""
+
+# HTML template for the search results page
+SEARCH_HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results - Yahoo Groups Archive</title>
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+    <header>
+        <h1>Search Results</h1>
+        <nav>
+            <a href="../index.html">Back to Archive</a>
+        </nav>
+    </header>
+    
+    <main>
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Search messages...">
+            <div id="search-results"></div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>Generated by Yahoo Groups Mbox to Static Website Converter</p>
+    </footer>
+    
+    <script src="../static/script.js"></script>
+</body>
+</html>
+"""

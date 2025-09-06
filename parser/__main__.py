@@ -5,31 +5,29 @@ Yahoo Groups Mbox to Static Website Converter
 This script converts an mbox file containing Yahoo Groups messages into a static website.
 """
 
+import argparse
+import email
+import json
+import mailbox
 import os
 import sys
-import re
-import json
-import email
-import mailbox
-import argparse
-import shutil
 from datetime import datetime
-from email import policy
-from email.parser import BytesParser
 from email.utils import parseaddr, parsedate_to_datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List
 
-import markdown
-from jinja2 import Environment, FileSystemLoader, select_autoescape
 from bs4 import BeautifulSoup
 from dateutil import tz
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+from . import constants
 
 # Template environment setup
 env = Environment(
     loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')),
     autoescape=select_autoescape(['html', 'xml'])
 )
+
 
 class Message:
     """Represents an email message with its metadata and content."""
@@ -135,6 +133,7 @@ def process_mbox(mbox_path: str) -> List[Message]:
 
     return messages
 
+
 def generate_site(messages: List[Message], output_dir: str):
     """Generate the static website from the processed messages."""
     # Create output directories
@@ -158,184 +157,17 @@ def generate_site(messages: List[Message], output_dir: str):
     # Generate search index
     generate_search_index(messages, output_path)
 
+
 def copy_static_files(static_dir: Path):
     """Copy static files (CSS, JS) to the output directory."""
-    # Create CSS file
-    css_content = """
-    /* Basic styling for the archive */
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        line-height: 1.6;
-        color: #333;
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 20px;
-    }
-    
-    .message {
-        border: 1px solid #e1e4e8;
-        border-radius: 6px;
-        padding: 16px;
-        margin-bottom: 16px;
-        background-color: #fff;
-    }
-    
-    .message-header {
-        border-bottom: 1px solid #e1e4e8;
-        padding-bottom: 8px;
-        margin-bottom: 12px;
-    }
-    
-    .message-subject {
-        font-size: 1.2em;
-        font-weight: 600;
-        margin: 0 0 8px 0;
-    }
-    
-    .message-meta {
-        color: #6a737d;
-        font-size: 0.9em;
-    }
-    
-    .message-content {
-        line-height: 1.6;
-    }
-    
-    .message-content img {
-        max-width: 100%;
-        height: auto;
-    }
-    
-    .plaintext-content {
-        white-space: pre-wrap;
-        font-family: monospace;
-    }
-    
-    a {
-        color: #0366d6;
-        text-decoration: none;
-    }
-    
-    a:hover {
-        text-decoration: underline;
-    }
-    
-    /* Navigation */
-    .pagination {
-        margin: 20px 0;
-        text-align: center;
-    }
-    
-    .pagination a, .pagination span {
-        padding: 8px 16px;
-        margin: 0 4px;
-        border: 1px solid #e1e4e8;
-        border-radius: 3px;
-        display: inline-block;
-    }
-    
-    .pagination a:hover {
-        background-color: #f6f8fa;
-    }
-    
-    /* Search */
-    .search-container {
-        margin: 20px 0;
-        text-align: center;
-    }
-    
-    #search-input {
-        padding: 8px 12px;
-        width: 300px;
-        max-width: 100%;
-        border: 1px solid #e1e4e8;
-        border-radius: 4px;
-        font-size: 16px;
-    }
-    
-    /* Responsive design */
-    @media (max-width: 768px) {
-        body {
-            padding: 10px;
-        }
-        
-        .message {
-            padding: 12px;
-        }
-    }
-    """
-
+    # Write CSS file
     with open(static_dir / 'style.css', 'w', encoding='utf-8') as f:
-        f.write(css_content)
+        f.write(constants.CSS_STYLES)
 
-    # Create JavaScript file for search functionality
-    js_content = """
-    document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('search-input');
-        const searchResults = document.getElementById('search-results');
-        
-        if (searchInput && searchResults) {
-            searchInput.addEventListener('input', function() {
-                const query = this.value.toLowerCase();
-                if (query.length < 2) {
-                    searchResults.style.display = 'none';
-                    return;
-                }
-                
-                fetch(`search/search_index.json`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const results = data.messages.filter(message => 
-                            message.subject.toLowerCase().includes(query) ||
-                            message.sender_name.toLowerCase().includes(query) ||
-                            message.content.toLowerCase().includes(query)
-                        );
-                        
-                        displayResults(results);
-                    })
-                    .catch(error => {
-                        console.error('Error loading search index:', error);
-                    });
-            });
-        }
-        
-        function displayResults(results) {
-            const searchResults = document.getElementById('search-results');
-            
-            if (results.length === 0) {
-                searchResults.innerHTML = '<p>No results found.</p>';
-                searchResults.style.display = 'block';
-                return;
-            }
-            
-            let html = '<div class="search-results">';
-            html += `<p>Found ${results.length} result${results.length === 1 ? '' : 's'}:</p>`;
-            
-            results.forEach(result => {
-                const date = new Date(result.date).toLocaleDateString();
-                const excerpt = result.content.substring(0, 200) + 
-                    (result.content.length > 200 ? '...' : '');
-                
-                html += `
-                <div class="search-result">
-                    <h3><a href="${result.url}">${result.subject}</a></h3>
-                    <div class="search-meta">
-                        From: ${result.sender_name} | Date: ${date}
-                    </div>
-                    <div class="search-excerpt">${excerpt}</div>
-                </div>
-                `;
-            });
-            
-            html += '</div>';
-            searchResults.innerHTML = html;
-            searchResults.style.display = 'block';
-        }
-    });
-    """
-
+    # Write JavaScript file
     with open(static_dir / 'script.js', 'w', encoding='utf-8') as f:
-        f.write(js_content)
+        f.write(constants.JAVASCRIPT_CODE)
+
 
 def generate_message_page(message: Message, output_dir: Path, all_messages: List[Message]):
     """Generate an HTML page for a single message."""
@@ -403,6 +235,7 @@ def generate_message_page(message: Message, output_dir: Path, all_messages: List
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(html)
 
+
 def generate_parent_html(parent: 'Message') -> str:
     """Generate HTML for a parent message link."""
     return f"""
@@ -410,6 +243,7 @@ def generate_parent_html(parent: 'Message') -> str:
         <p>In reply to: <a href="{parent.url}">{escape_html(parent.subject)}</a> from {escape_html(parent.sender_name)}</p>
     </div>
     """
+
 
 def generate_replies_html(replies: List[Message]) -> str:
     """Generate HTML for replies to a message."""
@@ -423,6 +257,7 @@ def generate_replies_html(replies: List[Message]) -> str:
         html += f'<li><a href="{reply.url}">{escape_html(reply.subject)}</a> - {escape_html(reply.sender_name)}</li>\n'
     html += '</ul>\n</div>\n'
     return html
+
 
 def generate_index_page(messages: List[Message], output_dir: Path):
     """Generate the main index page with all messages."""
@@ -497,6 +332,7 @@ def generate_index_page(messages: List[Message], output_dir: Path):
     with open(output_dir / 'index.html', 'w', encoding='utf-8') as f:
         f.write(html)
 
+
 def generate_search_index(messages: List[Message], output_dir: Path):
     """Generate a search index JSON file for client-side searching."""
     search_data = {
@@ -526,42 +362,10 @@ def generate_search_index(messages: List[Message], output_dir: Path):
     with open(search_dir / 'search_index.json', 'w', encoding='utf-8') as f:
         json.dump(search_data, f, indent=2)
 
-    # Create search results page
-    search_html = """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Search Results - Yahoo Groups Archive</title>
-        <link rel="stylesheet" href="../static/style.css">
-    </head>
-    <body>
-        <header>
-            <h1>Search Results</h1>
-            <nav>
-                <a href="../index.html">Back to Archive</a>
-            </nav>
-        </header>
-        
-        <main>
-            <div class="search-container">
-                <input type="text" id="search-input" placeholder="Search messages...">
-                <div id="search-results"></div>
-            </div>
-        </main>
-        
-        <footer>
-            <p>Generated by Yahoo Groups Mbox to Static Website Converter</p>
-        </footer>
-        
-        <script src="../static/script.js"></script>
-    </body>
-    </html>
-    """
-
+    # Write search results page
     with open(search_dir / 'search.html', 'w', encoding='utf-8') as f:
-        f.write(search_html)
+        f.write(constants.SEARCH_HTML_TEMPLATE)
+
 
 def escape_html(text: str) -> str:
     """Escape HTML special characters."""
@@ -575,6 +379,7 @@ def escape_html(text: str) -> str:
         .replace('"', '&quot;')
         .replace("'", '&#39;')
     )
+
 
 def get_snippet(html: str, max_length: int = 200) -> str:
     """Get a text snippet from HTML content."""
@@ -590,12 +395,13 @@ def get_snippet(html: str, max_length: int = 200) -> str:
         return text[:max_length].rsplit(' ', 1)[0] + '...'
     return text
 
+
 def main():
     # Set up argument parser
     parser = argparse.ArgumentParser(description='Convert an mbox file to a static website.')
     parser.add_argument('mbox_file', help='Path to the mbox file to process')
     parser.add_argument('output_dir', nargs='?', default='output',
-                       help='Output directory for the generated website (default: output)')
+                        help='Output directory for the generated website (default: output)')
 
     args = parser.parse_args()
 
@@ -617,6 +423,7 @@ def main():
 
     print(f"\nDone! The static website has been generated in the '{args.output_dir}' directory.")
     print(f"Open '{args.output_dir}/index.html' in your web browser to view the archive.")
+
 
 if __name__ == '__main__':
     main()
