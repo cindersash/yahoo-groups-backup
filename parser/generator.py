@@ -444,6 +444,7 @@ class SiteGenerator:
                 'url': f'../{first_msg.url}',  # Add ../ to go up from search/ to root
                 'title': thread_name,
                 'authors': authors,
+                'message_count': len(messages),
                 'start_date': messages[0].date.isoformat() if messages[0].date else '',
                 'last_date': messages[-1].date.isoformat() if messages[-1].date else ''
             })

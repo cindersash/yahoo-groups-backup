@@ -623,6 +623,7 @@ SEARCH_PAGE_TEMPLATE = """
                                             ${result.authors && result.authors.length > 0 
                                                 ? `<span>By: ${result.authors.map(a => escapeHtml(a)).join(', ')}</span>` 
                                                 : '<span>No author information</span>'}
+                                            <span class="message-count">${result.message_count} message${result.message_count !== 1 ? 's' : ''}</span>
                                             ${result.start_date || result.last_date ? `
                                                 <div class="thread-dates">
                                                     ${result.start_date ? `<span>Started: ${formatDate(result.start_date)}</span>` : ''}
