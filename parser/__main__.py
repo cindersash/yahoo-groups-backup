@@ -37,7 +37,12 @@ def process_mbox(mbox_path: str) -> dict[str, List[Message]]:
     print("Processing mbox file (this may take a while)...")
     
     try:
-        mbox = mailbox.mbox(mbox_path)
+        # Open the mbox file in binary mode and handle encoding at the message level
+        mbox = mailbox.mbox(mbox_path, create=False)
+        
+        # Set the default encoding for the mailbox
+        mbox._factory = lambda f, msg=None: mailbox.mboxMessage(f) if msg is None else mailbox.mboxMessage(msg)
+        
         invalid_messages = 0
         total_messages = len(mbox)
         print(f"Found {total_messages} messages to process")
