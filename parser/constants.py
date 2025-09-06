@@ -550,7 +550,7 @@ SEARCH_PAGE_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search Results - Yahoo Groups Archive</title>
+    <title>Search Results - {forum_name} Archive</title>
     <link rel="stylesheet" href="../static/style.css">
     <script>
         document.addEventListener('DOMContentLoaded', function() {

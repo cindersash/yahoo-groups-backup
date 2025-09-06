@@ -84,8 +84,9 @@ def process_mbox(mbox_path: str) -> dict[str, List[Message]]:
 
 def main():
     """Main entry point for the script."""
-    parser = argparse.ArgumentParser(description='Convert Yahoo Groups mbox to static website')
+    parser = argparse.ArgumentParser(description='Convert Yahoo Groups mbox to static website.')
     parser.add_argument('mbox_file', help='Path to the mbox file')
+    parser.add_argument('--forum-name', required=True, help='Name of the forum (used in page titles)')
     parser.add_argument('-o', '--output', default='output', help='Output directory (default: output)')
     
     args = parser.parse_args()
@@ -102,12 +103,11 @@ def main():
     print(f"Generating static website in: {args.output}")
 
     # Generate the static website using SiteGenerator
-    generator = SiteGenerator(args.output)
+    generator = SiteGenerator(args.output, args.forum_name)
     generator.generate_site(threads)
     
     print(f"\nDone! The static website has been generated in the '{args.output}' directory.")
     print(f"Open '{args.output}/index.html' in your web browser to view the archive.")
-
 
 if __name__ == '__main__':
     main()

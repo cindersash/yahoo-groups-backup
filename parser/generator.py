@@ -17,9 +17,15 @@ from .message import Message
 class SiteGenerator:
     """Handles the generation of static website files from message data."""
 
-    def __init__(self, output_dir: str):
-        """Initialize the SiteGenerator with output directory and template environment."""
+    def __init__(self, output_dir: str, forum_name: str):
+        """Initialize the SiteGenerator with output directory and template environment.
+        
+        Args:
+            output_dir: Directory where the static site will be generated
+            forum_name: Name of the forum (used in page titles)
+        """
         self.output_dir = Path(output_dir)
+        self.forum_name = forum_name
         self.messages_dir = self.output_dir / 'messages'
         self.static_dir = self.output_dir / 'static'
         self.search_dir = self.output_dir / 'search'
@@ -125,7 +131,7 @@ class SiteGenerator:
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>{message.subject} - Yahoo Groups Archive</title>
+            <title>{message.subject} - {forum_name} Archive</title>
             <link rel="stylesheet" href="../static/style.css">
         </head>
         <body>
@@ -164,6 +170,7 @@ class SiteGenerator:
         </body>
         </html>
         """.format(
+            forum_name=self.forum_name,
             message=message,
             subject=self._escape_html(message.subject),
             sender_name=self._escape_html(message.sender_name),
@@ -234,7 +241,7 @@ class SiteGenerator:
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>{self._escape_html(thread_subject)} - Thread - Yahoo Groups Archive</title>
+            <title>{self._escape_html(thread_subject)} - Thread - {self.forum_name} Archive</title>
             <link rel="stylesheet" href="../static/style.css">
         </head>
         <body>
@@ -362,7 +369,7 @@ class SiteGenerator:
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Yahoo Groups Archive - Page {page}</title>
+            <title>{self.forum_name} Archive - Page {page}</title>
             <link rel="stylesheet" href="static/style.css">
         </head>
         <body>
