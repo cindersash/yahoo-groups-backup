@@ -302,16 +302,6 @@ a:hover {
     color: #6a737d;
 }
 
-.thread-dates span::before {
-    content: '';
-    display: inline-block;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background-color: #d1d5da;
-    margin-right: 8px;
-}
-
 .thread-dates span:first-child::before {
     display: none;
 }
