@@ -136,7 +136,7 @@ class SiteGenerator:
         </head>
         <body>
             <header>
-                <h1>Yahoo Groups Archive</h1>
+                <h1>{forum_name} - Yahoo Groups Archive</h1>
                 <nav>
                     <a href="../index.html">Back to Index</a>
                 </nav>
@@ -246,7 +246,7 @@ class SiteGenerator:
         </head>
         <body>
             <header>
-                <h1>Yahoo Groups Archive</h1>
+                <h1>{self.forum_name} - Yahoo Groups Archive</h1>
                 <nav>
                     <a href="../index.html">Back to Index</a>
                 </nav>
@@ -374,7 +374,7 @@ class SiteGenerator:
         </head>
         <body>
             <header>
-                <h1>Yahoo Groups Archive</h1>
+                <h1>{self.forum_name} - Yahoo Groups Archive</h1>
                 <div class="search-container">
                     <form action="search/" method="get" class="search-form">
                         <input type="text" name="q" id="search-input" placeholder="Search messages..." required>
