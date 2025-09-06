@@ -1,9 +1,9 @@
 """
 HTML generation utilities for the Yahoo Groups Mbox to Static Website Converter.
 """
-
 import json
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
@@ -34,11 +34,19 @@ class SiteGenerator:
             autoescape=select_autoescape(['html', 'xml'])
         )
 
-    def generate_site(self, messages: List[Message], threads: List[List[Message]]) -> None:
-        """Generate the complete static website with thread-based pages."""
+    def generate_site(self, threads: dict[str, List[Message]]) -> None:
+        """
+        Generate the complete static website with thread-based pages.
+        
+        Args:
+            threads: Dictionary where keys are thread names and values are lists of messages
+        """
         print("\nGenerating static website...")
         start_time = time.time()
-        total_messages = len(messages)
+        
+        # Flatten messages list for compatibility with existing code
+        all_messages = [msg for thread_msgs in threads.values() for msg in thread_msgs]
+        total_messages = len(all_messages)
         
         # Copy static files
         print("Copying static files...")
@@ -49,9 +57,9 @@ class SiteGenerator:
         generated_count = 0
         processed_messages = 0
         
-        for i, thread in enumerate(threads, 1):
-            self._generate_thread_page(thread, i)
-            processed_messages += len(thread)
+        for i, (thread_name, messages) in enumerate(threads.items(), 1):
+            self._generate_thread_page(messages, i)
+            processed_messages += len(messages)
             generated_count += 1
             
             # Show progress every 10 threads
@@ -63,11 +71,11 @@ class SiteGenerator:
         
         # Generate index page
         print("\nGenerating index page...")
-        self._generate_index_page(threads, messages)
+        self._generate_index_page(threads)
         
         # Generate search index
         print("Generating search index...")
-        self._generate_search_index(messages, threads)
+        self._generate_search_index(threads)
         
         elapsed = time.time() - start_time
         print(f"\nWebsite generation completed in {elapsed:.1f} seconds")
@@ -263,47 +271,64 @@ class SiteGenerator:
         for msg in thread:
             msg.url = f'messages/{filename}'
     
-    def _generate_index_page(self, threads: List[List[Message]], messages: List[Message]) -> None:
-        """Generate the main index page with all threads."""
-        # Sort threads by date of first message, newest first
-        threads_sorted = sorted(threads, key=lambda t: t[0].date, reverse=True)
+    def _generate_index_page(self, threads: dict[str, List[Message]]) -> None:
+        """
+        Generate the main index page with all threads.
+        
+        Args:
+            threads: Dictionary where keys are thread names and values are lists of messages
+        """
+        # Convert threads to a list and sort by most recent message date
+        sorted_threads = sorted(
+            threads.items(),
+            key=lambda x: x[1][-1].date if x[1] and x[1][-1].date else datetime.min,
+            reverse=True
+        )
 
         # Group threads by month for better organization
         threads_by_month = {}
-        for thread in threads_sorted:
-            if not thread:
+        for thread_name, messages in sorted_threads:
+            if not messages:
                 continue
-            month_year = thread[0].date.strftime('%B %Y')
+                
+            # Get the most recent message date for sorting
+            last_message = messages[-1]
+            if not last_message.date:
+                continue
+                
+            month_year = last_message.date.strftime('%B %Y')
             if month_year not in threads_by_month:
                 threads_by_month[month_year] = []
-            threads_by_month[month_year].append(thread)
+            threads_by_month[month_year].append((thread_name, messages))
 
         # Generate HTML for each month
         months_html = ''
         for month_year, month_threads in threads_by_month.items():
             months_html += f'<h2>{month_year}</h2>\n'
-            for thread in month_threads:
-                if not thread:
+            for thread_name, messages in month_threads:
+                if not messages:
                     continue
                     
-                first_msg = thread[0]
-                last_msg = thread[-1]
-                reply_count = len(thread) - 1
+                first_msg = messages[0]
+                last_msg = messages[-1]
+                reply_count = len(messages) - 1
                 
                 months_html += f"""
                 <div class="thread-preview">
-                    <h3><a href="{first_msg.url}">{self._escape_html(first_msg.normalized_subject or '(No subject)')}</a></h3>
+                    <h3><a href="{first_msg.url}">{self._escape_html(thread_name)}</a></h3>
                     <div class="thread-meta">
                         Started by <strong>{self._escape_html(first_msg.sender_name)}</strong> | 
-                        {len(thread)} message{'s' if len(thread) != 1 else ''} | 
+                        {len(messages)} message{'s' if len(messages) != 1 else ''} | 
                         {reply_count} repl{'y' if reply_count == 1 else 'ies' if reply_count > 1 else 'ies'} |
-                        Last reply: {last_msg.date.strftime('%Y-%m-%d')}
+                        Last reply: {last_msg.date.strftime('%Y-%m-%d') if last_msg.date else 'Unknown date'}
                     </div>
                     <div class="message-snippet">
-                        {self._get_snippet(first_msg.html_content, 200)}
+                        {self._get_snippet(first_msg.html_content, 200) if first_msg.html_content else ''}
                     </div>
                 </div>
                 """
+
+        total_messages = sum(len(lst) for lst in threads.values())
 
         # Create the complete HTML
         html = f"""
@@ -325,7 +350,7 @@ class SiteGenerator:
             </header>
             
             <main>
-                <p>Total messages: {len(messages)}</p>
+                <p>Total messages: {total_messages}</p>
                 
                 {months_html}
                 
@@ -347,53 +372,56 @@ class SiteGenerator:
         with open(self.output_dir / 'index.html', 'w', encoding='utf-8') as f:
             f.write(html)
 
-    def _generate_search_index(self, messages: List[Message], threads: List[List[Message]]) -> None:
-        """Generate a search index JSON file."""
+    def _generate_search_index(self, threads: dict[str, List[Message]]) -> None:
+        """
+        Generate a search index JSON file.
+        
+        Args:
+            threads: Dictionary where keys are thread names and values are lists of messages
+        """
         search_data = {
             'messages': [],
             'threads': []
         }
         
-        # Add messages to search index
-        for msg in messages:
-            if not msg.html_content:
+        # Add messages and threads to search index
+        for thread_idx, (thread_name, messages) in enumerate(threads.items()):
+            if not messages:
                 continue
                 
-            # Extract text from HTML content for search
-            soup = BeautifulSoup(msg.html_content, 'html.parser')
-            text_content = soup.get_text(' ', strip=True)
+            first_msg = messages[0]
+            last_msg = messages[-1]
             
-            # Find which thread this message belongs to
-            thread_id = next((i for i, t in enumerate(threads) if msg in t), -1)
-            
-            search_data['messages'].append({
-                'id': str(msg.id),
-                'thread_id': thread_id,
-                'url': msg.url,
-                'title': msg.normalized_subject or '(No subject)',
-                'content': text_content,
-                'author': msg.sender_name,
-                'date': msg.date.isoformat(),
-                'is_thread_start': thread_id >= 0 and msg == threads[thread_id][0]
-            })
-        
-        # Add thread information
-        for i, thread in enumerate(threads):
-            if not thread:
-                continue
-                
-            first_msg = thread[0]
-            last_msg = thread[-1]
-            
+            # Add thread information
             search_data['threads'].append({
-                'id': i,
+                'id': thread_idx,
                 'url': first_msg.url,
-                'title': first_msg.normalized_subject or '(No subject)',
-                'message_count': len(thread),
-                'start_date': first_msg.date.isoformat(),
-                'last_activity': last_msg.date.isoformat(),
-                'authors': list({msg.sender_name for msg in thread})
+                'title': thread_name,
+                'message_count': len(messages),
+                'start_date': first_msg.date.isoformat() if first_msg.date else '',
+                'last_activity': last_msg.date.isoformat() if last_msg.date else '',
+                'authors': list({msg.sender_name for msg in messages if msg.sender_name})
             })
+            
+            # Add messages in this thread
+            for msg in messages:
+                if not msg.html_content:
+                    continue
+                    
+                # Extract text from HTML content for search
+                soup = BeautifulSoup(msg.html_content, 'html.parser')
+                text_content = soup.get_text(' ', strip=True)
+                
+                search_data['messages'].append({
+                    'id': str(msg.id),
+                    'thread_id': thread_idx,
+                    'url': f"{msg.url}#msg-{msg.id}",
+                    'title': thread_name,
+                    'content': text_content,
+                    'author': msg.sender_name or 'Unknown',
+                    'date': msg.date.isoformat() if msg.date else '',
+                    'is_thread_start': msg == first_msg
+                })
             
         # Write search index to file
         search_file = self.search_dir / 'search_index.json'

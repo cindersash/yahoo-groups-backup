@@ -20,9 +20,12 @@ def _is_valid_message(message: Message) -> bool:
     return message.html_content and message.date
 
 
-def process_mbox(mbox_path: str) -> (List[Message], List[List[Message]]):
-    """Process mbox file and return a list of Message objects grouped by thread."""
-    messages = []
+def process_mbox(mbox_path: str) -> Dict[str, List[Message]]:
+    """
+    Process mbox file and return a dictionary where keys are thread names
+    and values are lists of Message objects in that thread, sorted by date.
+    """
+    threads = {}
     msg_id = 1
     processed_count = 0
     start_time = time.time()
@@ -38,16 +41,19 @@ def process_mbox(mbox_path: str) -> (List[Message], List[List[Message]]):
         total_messages = len(mbox)
         print(f"Found {total_messages} messages to process")
         
-        # First pass: collect all valid messages
-        all_messages = []
         for msg in mbox:
             try:
                 message = Message(msg_id, msg)
-
-                if _is_valid_message(message):
-                    all_messages.append(message)
-                    msg_id += 1
-
+                if not _is_valid_message(message):
+                    continue
+                    
+                # Get or create thread
+                thread_key = message.normalized_subject or '(No subject)'
+                if thread_key not in threads:
+                    threads[thread_key] = []
+                threads[thread_key].append(message)
+                
+                msg_id += 1
                 processed_count += 1
                 
                 # Show progress every 100 messages
@@ -61,29 +67,26 @@ def process_mbox(mbox_path: str) -> (List[Message], List[List[Message]]):
                 print(f"Error processing message {msg_id}: {str(e)}")
                 continue
         
-        # Group messages by thread (normalized subject)
-        threads = {}
-        for message in all_messages:
-            thread_key = message.normalized_subject or '(No subject)'
-            if thread_key not in threads:
-                threads[thread_key] = []
-            threads[thread_key].append(message)
-        
         # Sort messages within each thread by date
         for thread_messages in threads.values():
-            thread_messages.sort(key=lambda x: x.date)
+            # Filter out messages with None dates first
+            valid_messages = [m for m in thread_messages if m.date is not None]
+            valid_messages.sort(key=lambda x: x.date)
+            
+            # If we had to filter out messages, update the thread
+            if len(valid_messages) != len(thread_messages):
+                threads[thread_key] = valid_messages
         
-        # Flatten the threads back into a single list for compatibility
-        # The SiteGenerator will handle the grouping
-        messages = [msg for thread in threads.values() for msg in thread]
-                
+        # Remove empty threads (if any)
+        threads = {k: v for k, v in threads.items() if v}
+        
     except Exception as e:
         print(f"Error processing mbox file: {str(e)}")
         sys.exit(1)
         
-    print(f"\nSuccessfully processed {len(messages)} valid messages out of {total_messages}")
-    print(f"Grouped into {len(threads)} threads")
-    return messages, list(threads.values())
+    total_messages = sum(len(msgs) for msgs in threads.values())
+    print(f"\nSuccessfully processed {total_messages} valid messages in {len(threads)} threads")
+    return threads
 
 
 def main():
@@ -95,18 +98,19 @@ def main():
     args = parser.parse_args()
     
     # Process mbox file
-    messages, threads = process_mbox(args.mbox_file)
+    threads = process_mbox(args.mbox_file)
     
-    if not messages:
-        print("No messages found in the mbox file.")
+    if not threads:
+        print("No valid messages found in the mbox file.")
         sys.exit(1)
 
-    print(f"Processed {len(messages)} messages in {len(threads)} threads.")
+    total_messages = sum(len(messages) for messages in threads.values())
+    print(f"Processed {total_messages} messages in {len(threads)} threads.")
     print(f"Generating static website in: {args.output}")
 
     # Generate the static website using SiteGenerator
     generator = SiteGenerator(args.output)
-    generator.generate_site(messages, threads)
+    generator.generate_site(threads)
     
     print(f"\nDone! The static website has been generated in the '{args.output}' directory.")
     print(f"Open '{args.output}/index.html' in your web browser to view the archive.")
