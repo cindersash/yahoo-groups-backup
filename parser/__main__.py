@@ -20,7 +20,7 @@ def _is_valid_message(message: Message) -> bool:
     return message.html_content and message.date
 
 
-def process_mbox(mbox_path: str) -> Dict[str, List[Message]]:
+def process_mbox(mbox_path: str) -> dict[str, List[Message]]:
     """
     Process mbox file and return a dictionary where keys are thread names
     and values are lists of Message objects in that thread, sorted by date.
@@ -38,22 +38,24 @@ def process_mbox(mbox_path: str) -> Dict[str, List[Message]]:
     
     try:
         mbox = mailbox.mbox(mbox_path)
+        invalid_messages = 0
         total_messages = len(mbox)
         print(f"Found {total_messages} messages to process")
         
         for msg in mbox:
             try:
                 message = Message(msg_id, msg)
-                if not _is_valid_message(message):
-                    continue
-                    
-                # Get or create thread
-                thread_key = message.normalized_subject or '(No subject)'
-                if thread_key not in threads:
-                    threads[thread_key] = []
-                threads[thread_key].append(message)
-                
-                msg_id += 1
+
+                if _is_valid_message(message):
+                    thread_key = message.normalized_subject or '(No subject)'
+                    if thread_key not in threads:
+                        threads[thread_key] = []
+                    threads[thread_key].append(message)
+
+                    msg_id += 1
+                else:
+                    invalid_messages += 1
+
                 processed_count += 1
                 
                 # Show progress every 100 messages
@@ -67,16 +69,6 @@ def process_mbox(mbox_path: str) -> Dict[str, List[Message]]:
                 print(f"Error processing message {msg_id}: {str(e)}")
                 continue
         
-        # Sort messages within each thread by date
-        for thread_messages in threads.values():
-            # Filter out messages with None dates first
-            valid_messages = [m for m in thread_messages if m.date is not None]
-            valid_messages.sort(key=lambda x: x.date)
-            
-            # If we had to filter out messages, update the thread
-            if len(valid_messages) != len(thread_messages):
-                threads[thread_key] = valid_messages
-        
         # Remove empty threads (if any)
         threads = {k: v for k, v in threads.items() if v}
         
@@ -86,6 +78,7 @@ def process_mbox(mbox_path: str) -> Dict[str, List[Message]]:
         
     total_messages = sum(len(msgs) for msgs in threads.values())
     print(f"\nSuccessfully processed {total_messages} valid messages in {len(threads)} threads")
+    print(f"Skipped {invalid_messages} invalid messages")
     return threads
 
 
