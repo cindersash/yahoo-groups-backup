@@ -211,54 +211,81 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchResults = document.getElementById('search-results');
     
     if (searchInput && searchResults) {
+        let searchData = { messages: [], threads: [] };
+        
+        // Load search index
+        fetch('search/search_index.json')
+            .then(response => response.json())
+            .then(data => {
+                searchData = data;
+                searchInput.disabled = false;
+                searchInput.placeholder = 'Search messages...';
+            })
+            .catch(error => {
+                console.error('Error loading search index:', error);
+                searchInput.placeholder = 'Search not available';
+            });
+        
         searchInput.addEventListener('input', function() {
-            const query = this.value.toLowerCase();
+            const query = this.value.trim().toLowerCase();
             if (query.length < 2) {
                 searchResults.style.display = 'none';
                 return;
             }
             
-            fetch(`search/search_index.json`)
-                .then(response => response.json())
-                .then(data => {
-                    const results = data.messages.filter(message => 
-                        message.subject.toLowerCase().includes(query) ||
-                        message.sender_name.toLowerCase().includes(query) ||
-                        message.content.toLowerCase().includes(query)
-                    );
-                    
-                    displayResults(results);
-                })
-                .catch(error => {
-                    console.error('Error loading search index:', error);
-                });
+            // Search in messages
+            const messageResults = searchData.messages.filter(message => 
+                (message.title && message.title.toLowerCase().includes(query)) ||
+                (message.author && message.author.toLowerCase().includes(query)) ||
+                (message.content && message.content.toLowerCase().includes(query))
+            );
+            
+            // Group results by thread
+            const threadResults = new Map();
+            messageResults.forEach(msg => {
+                const threadId = msg.thread_id;
+                if (!threadResults.has(threadId)) {
+                    const thread = searchData.threads.find(t => t.id === threadId) || {};
+                    threadResults.set(threadId, {
+                        ...thread,
+                        matches: []
+                    });
+                }
+                threadResults.get(threadId).matches.push(msg);
+            });
+            
+            displayResults(Array.from(threadResults.values()));
         });
     }
     
-    function displayResults(results) {
+    function displayResults(threadResults) {
         const searchResults = document.getElementById('search-results');
         
-        if (results.length === 0) {
+        if (threadResults.length === 0) {
             searchResults.innerHTML = '<p>No results found.</p>';
             searchResults.style.display = 'block';
             return;
         }
         
         let html = '<div class="search-results">';
-        html += `<p>Found ${results.length} result${results.length === 1 ? '' : 's'}:</p>`;
+        html += `<p>Found ${threadResults.length} matching thread${threadResults.length === 1 ? '' : 's'}:</p>`;
         
-        results.forEach(result => {
-            const date = new Date(result.date).toLocaleDateString();
-            const excerpt = result.content.substring(0, 200) + 
-                (result.content.length > 200 ? '...' : '');
+        threadResults.forEach(thread => {
+            const firstMatch = thread.matches[0];
+            const lastActivity = new Date(thread.last_activity).toLocaleDateString();
+            const matchCount = thread.matches.length;
             
             html += `
             <div class="search-result">
-                <h3><a href="${result.url}">${result.subject}</a></h3>
+                <h3><a href="${thread.url}">${escapeHtml(thread.title)}</a></h3>
                 <div class="search-meta">
-                    From: ${result.sender_name} | Date: ${date}
+                    ${matchCount} match${matchCount > 1 ? 'es' : ''} in this thread | 
+                    Last activity: ${lastActivity} | 
+                    ${thread.message_count} total message${thread.message_count !== 1 ? 's' : ''}
                 </div>
-                <div class="search-excerpt">${excerpt}</div>
+                <div class="search-snippet">
+                    ${escapeHtml(firstMatch.content.substring(0, 200))}${firstMatch.content.length > 200 ? '...' : ''}
+                </div>
             </div>
             `;
         });
@@ -266,6 +293,17 @@ document.addEventListener('DOMContentLoaded', function() {
         html += '</div>';
         searchResults.innerHTML = html;
         searchResults.style.display = 'block';
+    }
+    
+    function escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return unsafe
+            .toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 });
 """

@@ -349,7 +349,12 @@ class SiteGenerator:
 
     def _generate_search_index(self, messages: List[Message], threads: List[List[Message]]) -> None:
         """Generate a search index JSON file."""
-        search_data = []
+        search_data = {
+            'messages': [],
+            'threads': []
+        }
+        
+        # Add messages to search index
         for msg in messages:
             if not msg.html_content:
                 continue
@@ -358,14 +363,36 @@ class SiteGenerator:
             soup = BeautifulSoup(msg.html_content, 'html.parser')
             text_content = soup.get_text(' ', strip=True)
             
-            search_data.append({
+            # Find which thread this message belongs to
+            thread_id = next((i for i, t in enumerate(threads) if msg in t), -1)
+            
+            search_data['messages'].append({
                 'id': str(msg.id),
+                'thread_id': thread_id,
                 'url': msg.url,
                 'title': msg.normalized_subject or '(No subject)',
                 'content': text_content,
                 'author': msg.sender_name,
                 'date': msg.date.isoformat(),
-                'is_thread_start': msg == next((t[0] for t in threads if msg in t), None)
+                'is_thread_start': thread_id >= 0 and msg == threads[thread_id][0]
+            })
+        
+        # Add thread information
+        for i, thread in enumerate(threads):
+            if not thread:
+                continue
+                
+            first_msg = thread[0]
+            last_msg = thread[-1]
+            
+            search_data['threads'].append({
+                'id': i,
+                'url': first_msg.url,
+                'title': first_msg.normalized_subject or '(No subject)',
+                'message_count': len(thread),
+                'start_date': first_msg.date.isoformat(),
+                'last_activity': last_msg.date.isoformat(),
+                'authors': list({msg.sender_name for msg in thread})
             })
             
         # Write search index to file

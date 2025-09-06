@@ -40,7 +40,8 @@ class Message:
         """Parse the date from the email message and ensure it's timezone-aware."""
         date_str = self._get_header(msg, 'Date')
         if not date_str:
-            return datetime.now(tz=tz.UTC)
+            return None
+
         try:
             dt = parsedate_to_datetime(date_str)
             # If the datetime is naive, make it timezone-aware with UTC
