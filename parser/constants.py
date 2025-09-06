@@ -196,34 +196,157 @@ a:hover {
 /* Search */
 .search-container {
     margin: 20px 0;
-    text-align: center;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0 15px;
 }
 
 .search-form {
     display: flex;
-    max-width: 500px;
-    margin: 0 auto 20px;
+    max-width: 600px;
+    margin: 0 auto 30px;
     gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
 }
 
-#search-input {
+#search-input, #search-query {
     flex: 1;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 12px 16px;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px 0 0 6px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
 }
 
-#search-button {
-    padding: 10px 20px;
-    background-color: #0366d6;
+#search-input:focus, #search-query:focus {
+    border-color: #0366d6;
+    box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
+}
+
+#search-button, #search-form button[type="submit"] {
+    padding: 12px 24px;
+    background-color: #2ea44f;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 0 6px 6px 0;
+    font-weight: 600;
     cursor: pointer;
+    transition: background-color 0.2s;
 }
 
-#search-button:hover {
-    background-color: #0356b6;
+#search-button:hover, #search-form button[type="submit"]:hover {
+    background-color: #2c974b;
+}
+
+#search-button:active, #search-form button[type="submit"]:active {
+    background-color: #298e46;
+}
+
+/* Search results */
+.search-results {
+    margin-top: 20px;
+}
+
+.search-result {
+    background: #fff;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 16px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.search-result:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.search-result h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+}
+
+.search-result h3 a {
+    color: #0366d6;
+    text-decoration: none;
+}
+
+.search-result h3 a:hover {
+    text-decoration: underline;
+}
+
+.search-meta {
+    color: #6a737d;
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+/* Loading indicator */
+#loading {
+    color: #6a737d;
+    font-style: italic;
+    margin: 20px 0;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin: 30px 0;
+    flex-wrap: wrap;
+}
+
+.pagination a, .pagination span {
+    padding: 8px 12px;
+    margin: 0 4px;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    color: #0366d6;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.pagination a:hover {
+    background-color: #f6f8fa;
+    border-color: #d1d5da;
+}
+
+.pagination .current {
+    background-color: #0366d6;
+    color: white;
+    border-color: #0366d6;
+    font-weight: 600;
+}
+
+.pagination .ellipsis {
+    border: none;
+    padding: 8px 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .search-form {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    #search-input, #search-query, #search-button, #search-form button[type="submit"] {
+        width: 100%;
+        border-radius: 6px;
+    }
+    
+    .pagination {
+        gap: 4px;
+    }
+    
+    .pagination a, .pagination span {
+        padding: 6px 10px;
+        margin: 2px;
+    }
 }
 
 
@@ -332,7 +455,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        document.getElementById('search-button').addEventListener('click', performSearch););
+        // Add click event listener to the search button
+        const searchButton = document.getElementById('search-button');
+        if (searchButton) {
+            searchButton.addEventListener('click', performSearch);
+        }
     }
     
     function displayResults(threads) {
@@ -381,7 +508,7 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 # HTML template for the search results page
-SEARCH_HTML_TEMPLATE = """
+SEARCH_PAGE_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -389,6 +516,136 @@ SEARCH_HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Results - Yahoo Groups Archive</title>
     <link rel="stylesheet" href="../static/style.css">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const query = urlParams.get('q') || '';
+            const page = parseInt(urlParams.get('page') || '1');
+            
+            // Set search query in input
+            const searchInput = document.getElementById('search-query');
+            if (searchInput) {
+                searchInput.value = query;
+            }
+            
+            // Load search results
+            if (query) {
+                performSearch(query, page);
+            }
+            
+            // Handle search form submission
+            const searchForm = document.getElementById('search-form');
+            if (searchForm) {
+                searchForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const newQuery = searchInput.value.trim();
+                    if (newQuery) {
+                        window.location.href = `?q=${encodeURIComponent(newQuery)}`;
+                    }
+                });
+            }
+            
+            async function performSearch(query, page = 1) {
+                const resultsContainer = document.getElementById('search-results');
+                const loadingEl = document.getElementById('loading');
+                const paginationEl = document.getElementById('pagination');
+                const resultsPerPage = 10;
+                
+                try {
+                    loadingEl.style.display = 'block';
+                    resultsContainer.innerHTML = '';
+                    
+                    // Load search index
+                    const response = await fetch('../search/search_index.json');
+                    const searchData = await response.json();
+                    
+                    // Filter results
+                    const queryLower = query.toLowerCase();
+                    const allResults = searchData.filter(thread => {
+                        const titleMatch = thread.title && thread.title.toLowerCase().includes(queryLower);
+                        const authorMatch = thread.authors && thread.authors.some(author => 
+                            author && author.toLowerCase().includes(queryLower)
+                        );
+                        return titleMatch || authorMatch;
+                    });
+                    
+                    // Pagination
+                    const totalResults = allResults.length;
+                    const totalPages = Math.ceil(totalResults / resultsPerPage);
+                    const startIdx = (page - 1) * resultsPerPage;
+                    const endIdx = startIdx + resultsPerPage;
+                    const pageResults = allResults.slice(startIdx, endIdx);
+                    
+                    // Display results
+                    if (totalResults === 0) {
+                        resultsContainer.innerHTML = `<p>No results found for "${escapeHtml(query)}"</p>`;
+                    } else {
+                        const resultsHtml = `
+                            <p>Found ${totalResults} result${totalResults === 1 ? '' : 's'} for "${escapeHtml(query)}"</p>
+                            <div class="search-results">
+                                ${pageResults.map(result => `
+                                    <div class="search-result">
+                                        <h3><a href="${escapeHtml(result.url)}">${escapeHtml(result.title)}</a></h3>
+                                        <div class="search-meta">
+                                            ${result.authors && result.authors.length > 0 
+                                                ? `By: ${result.authors.map(a => escapeHtml(a)).join(', ')}` 
+                                                : 'No author information'}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                        resultsContainer.innerHTML = resultsHtml;
+                        
+                        // Add pagination
+                        if (totalPages > 1) {
+                            let paginationHtml = '<div class="pagination">';
+                            
+                            // Previous button
+                            if (page > 1) {
+                                paginationHtml += `<a href="?q=${encodeURIComponent(query)}&page=${page - 1}">&laquo; Previous</a>`;
+                            }
+                            
+                            // Page numbers
+                            for (let i = 1; i <= totalPages; i++) {
+                                if (i === page) {
+                                    paginationHtml += `<span class="current">${i}</span>`;
+                                } else if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+                                    paginationHtml += `<a href="?q=${encodeURIComponent(query)}&page=${i}">${i}</a>`;
+                                } else if (i === page - 3 || i === page + 3) {
+                                    paginationHtml += '<span class="ellipsis">...</span>';
+                                }
+                            }
+                            
+                            // Next button
+                            if (page < totalPages) {
+                                paginationHtml += `<a href="?q=${encodeURIComponent(query)}&page=${page + 1}">Next &raquo;</a>`;
+                            }
+                            
+                            paginationHtml += '</div>';
+                            paginationEl.innerHTML = paginationHtml;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error performing search:', error);
+                    resultsContainer.innerHTML = '<p>An error occurred while performing the search. Please try again.</p>';
+                } finally {
+                    loadingEl.style.display = 'none';
+                }
+            }
+            
+            function escapeHtml(unsafe) {
+                if (!unsafe) return '';
+                return unsafe
+                    .toString()
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+        });
+    </script>
 </head>
 <body>
     <header>
@@ -400,19 +657,23 @@ SEARCH_HTML_TEMPLATE = """
     
     <main>
         <div class="search-container">
-            <div class="search-form">
-                <input type="text" id="search-input" placeholder="Search messages...">
-                <button id="search-button" type="button">Search</button>
+            <form id="search-form" class="search-form">
+                <input type="text" id="search-query" name="q" placeholder="Search messages..." required>
+                <button type="submit">Search</button>
+            </form>
+            
+            <div id="loading" style="display: none; text-align: center; padding: 20px;">
+                <p>Searching...</p>
             </div>
+            
             <div id="search-results"></div>
+            <div id="pagination" class="pagination"></div>
         </div>
     </main>
     
     <footer>
         <p>Generated by Yahoo Groups Mbox to Static Website Converter</p>
     </footer>
-    
-    <script src="../static/script.js"></script>
 </body>
 </html>
 """

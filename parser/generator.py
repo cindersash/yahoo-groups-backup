@@ -369,8 +369,10 @@ class SiteGenerator:
             <header>
                 <h1>Yahoo Groups Archive</h1>
                 <div class="search-container">
-                    <input type="text" id="search-input" placeholder="Search messages...">
-                    <div id="search-results" style="display: none;"></div>
+                    <form action="search/" method="get" class="search-form">
+                        <input type="text" name="q" id="search-input" placeholder="Search messages..." required>
+                        <button type="submit" id="search-button">Search</button>
+                    </form>
                 </div>
             </header>
             
@@ -405,7 +407,7 @@ class SiteGenerator:
 
     def _generate_search_index(self, threads: dict[str, List[Message]]) -> None:
         """
-        Generate a search index JSON file containing only thread titles and authors.
+        Generate a search index JSON file and search page.
         
         Args:
             threads: Dictionary where keys are thread names and values are lists of messages
@@ -430,14 +432,18 @@ class SiteGenerator:
                 'authors': authors
             })
 
+        # Ensure search directory exists
+        self.search_dir.mkdir(parents=True, exist_ok=True)
+
         # Write search index to file
         search_file = self.search_dir / 'search_index.json'
         with open(search_file, 'w', encoding='utf-8') as f:
             json.dump(search_data, f, ensure_ascii=False, indent=2)
 
-        # Write search results page
-        with open(self.search_dir / 'search.html', 'w', encoding='utf-8') as f:
-            f.write(constants.SEARCH_HTML_TEMPLATE)
+        # Write search page
+        search_page = self.search_dir / 'index.html'
+        with open(search_page, 'w', encoding='utf-8') as f:
+            f.write(constants.SEARCH_PAGE_TEMPLATE)
 
     @staticmethod
     def _escape_html(text: str) -> str:
