@@ -354,7 +354,7 @@ def generate_message_page(message: Message, output_dir: Path, all_messages: List
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{subject} - Yahoo Groups Archive</title>
+        <title>{message.subject} - Yahoo Groups Archive</title>
         <link rel="stylesheet" href="../static/style.css">
     </head>
     <body>
@@ -366,23 +366,23 @@ def generate_message_page(message: Message, output_dir: Path, all_messages: List
         </header>
         
         <main>
-            {parent_html}
+            {generate_parent_html(parent) if parent else ''}
             
             <article class="message">
                 <div class="message-header">
-                    <h2 class="message-subject">{subject}</h2>
+                    <h2 class="message-subject">{escape_html(message.subject)}</h2>
                     <div class="message-meta">
-                        From: <strong>{sender_name}</strong> &lt;{sender_email}&gt; | 
-                        Date: {date}
+                        From: <strong>{escape_html(message.sender_name)}</strong> &lt;{escape_html(message.sender_email)}&gt; | 
+                        Date: {message.date.strftime('%Y-%m-%d %H:%M:%S %Z')}
                     </div>
                 </div>
                 
                 <div class="message-content">
-                    {content}
+                    {message.html_content}
                 </div>
             </article>
             
-            {replies_html}
+            {generate_replies_html(replies) if replies else ''}
         </main>
         
         <footer>
@@ -392,15 +392,7 @@ def generate_message_page(message: Message, output_dir: Path, all_messages: List
         <script src="../static/script.js"></script>
     </body>
     </html>
-    """.format(
-        subject=escape_html(message.subject),
-        sender_name=escape_html(message.sender_name),
-        sender_email=escape_html(message.sender_email),
-        date=message.date.strftime('%Y-%m-%d %H:%M:%S %Z'),
-        content=message.html_content,
-        parent_html=generate_parent_html(parent) if parent else '',
-        replies_html=generate_replies_html(replies) if replies else ''
-    )
+    """
 
     # Write to file
     output_file = output_dir / f"{message.id}.html"
@@ -466,7 +458,7 @@ def generate_index_page(messages: List[Message], output_dir: Path):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Yahoo Groups Archive</title>
+        <title>{messages[0].subject} - Yahoo Groups Archive</title>
         <link rel="stylesheet" href="static/style.css">
     </head>
     <body>
@@ -479,7 +471,7 @@ def generate_index_page(messages: List[Message], output_dir: Path):
         </header>
         
         <main>
-            <p>Total messages: {message_count}</p>
+            <p>Total messages: {len(messages)}</p>
             
             {months_html}
             
@@ -496,7 +488,6 @@ def generate_index_page(messages: List[Message], output_dir: Path):
     </body>
     </html>
     """.format(
-        message_count=len(messages),
         months_html=months_html
     )
 
