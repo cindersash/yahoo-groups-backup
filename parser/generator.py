@@ -405,54 +405,30 @@ class SiteGenerator:
 
     def _generate_search_index(self, threads: dict[str, List[Message]]) -> None:
         """
-        Generate a search index JSON file.
+        Generate a search index JSON file containing only thread titles and authors.
         
         Args:
             threads: Dictionary where keys are thread names and values are lists of messages
         """
-        search_data = {
-            'messages': [],
-            'threads': []
-        }
+        search_data = []
 
-        # Add messages and threads to search index
+        # Add thread information to search index
         for thread_idx, (thread_name, messages) in enumerate(threads.items()):
             if not messages:
                 continue
 
             first_msg = messages[0]
-            last_msg = messages[-1]
-
-            # Add thread information
-            search_data['threads'].append({
+            
+            # Get unique authors in the thread
+            authors = list({msg.sender_name for msg in messages if msg.sender_name})
+            
+            # Add simplified thread information
+            search_data.append({
                 'id': thread_idx,
                 'url': first_msg.url,
                 'title': thread_name,
-                'message_count': len(messages),
-                'start_date': first_msg.date.isoformat() if first_msg.date else '',
-                'last_activity': last_msg.date.isoformat() if last_msg.date else '',
-                'authors': list({msg.sender_name for msg in messages if msg.sender_name})
+                'authors': authors
             })
-
-            # Add messages in this thread
-            for msg in messages:
-                if not msg.html_content:
-                    continue
-
-                # Extract text from HTML content for search
-                soup = BeautifulSoup(msg.html_content, 'html.parser')
-                text_content = soup.get_text(' ', strip=True)
-
-                search_data['messages'].append({
-                    'id': str(msg.id),
-                    'thread_id': thread_idx,
-                    'url': f"{msg.url}#msg-{msg.id}",
-                    'title': thread_name,
-                    'content': text_content,
-                    'author': msg.sender_name or 'Unknown',
-                    'date': msg.date.isoformat() if msg.date else '',
-                    'is_thread_start': msg == first_msg
-                })
 
         # Write search index to file
         search_file = self.search_dir / 'search_index.json'
@@ -477,7 +453,8 @@ class SiteGenerator:
             .replace("'", '&#39;')
         )
 
-    def _generate_pagination_html(self, current_page: int, total_pages: int) -> str:
+    @staticmethod
+    def _generate_pagination_html(current_page: int, total_pages: int) -> str:
         """
         Generate HTML for pagination controls.
         

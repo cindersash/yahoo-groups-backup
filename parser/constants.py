@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchResults = document.getElementById('search-results');
     
     if (searchInput && searchResults) {
-        let searchData = { messages: [], threads: [] };
+        let searchData = [];
         
         // Load search index
         fetch('search/search_index.json')
@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 searchData = data;
                 searchInput.disabled = false;
-                searchInput.placeholder = 'Search messages...';
+                searchInput.placeholder = 'Search threads by title or author...';
             })
             .catch(error => {
                 console.error('Error loading search index:', error);
@@ -285,58 +285,49 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Search in messages
-            const messageResults = searchData.messages.filter(message => 
-                (message.title && message.title.toLowerCase().includes(query)) ||
-                (message.author && message.author.toLowerCase().includes(query)) ||
-                (message.content && message.content.toLowerCase().includes(query))
-            );
-            
-            // Group results by thread
-            const threadResults = new Map();
-            messageResults.forEach(msg => {
-                const threadId = msg.thread_id;
-                if (!threadResults.has(threadId)) {
-                    const thread = searchData.threads.find(t => t.id === threadId) || {};
-                    threadResults.set(threadId, {
-                        ...thread,
-                        matches: []
-                    });
+            // Search in threads
+            const threadResults = searchData.filter(thread => {
+                // Check if query matches title
+                if (thread.title && thread.title.toLowerCase().includes(query)) {
+                    return true;
                 }
-                threadResults.get(threadId).matches.push(msg);
+                
+                // Check if query matches any author
+                if (thread.authors && thread.authors.some(author => 
+                    author && author.toLowerCase().includes(query)
+                )) {
+                    return true;
+                }
+                
+                return false;
             });
             
-            displayResults(Array.from(threadResults.values()));
+            displayResults(threadResults);
         });
     }
     
-    function displayResults(threadResults) {
+    function displayResults(threads) {
         const searchResults = document.getElementById('search-results');
         
-        if (threadResults.length === 0) {
-            searchResults.innerHTML = '<p>No results found.</p>';
+        if (threads.length === 0) {
+            searchResults.innerHTML = '<p>No matching threads found.</p>';
             searchResults.style.display = 'block';
             return;
         }
         
         let html = '<div class="search-results">';
-        html += `<p>Found ${threadResults.length} matching thread${threadResults.length === 1 ? '' : 's'}:</p>`;
+        html += `<p>Found ${threads.length} matching thread${threads.length === 1 ? '' : 's'}:</p>`;
         
-        threadResults.forEach(thread => {
-            const firstMatch = thread.matches[0];
-            const lastActivity = new Date(thread.last_activity).toLocaleDateString();
-            const matchCount = thread.matches.length;
+        threads.forEach(thread => {
+            const authors = thread.authors && thread.authors.length > 0 
+                ? `by ${thread.authors.join(', ')}` 
+                : 'No authors';
             
             html += `
             <div class="search-result">
                 <h3><a href="${thread.url}">${escapeHtml(thread.title)}</a></h3>
                 <div class="search-meta">
-                    ${matchCount} match${matchCount > 1 ? 'es' : ''} in this thread | 
-                    Last activity: ${lastActivity} | 
-                    ${thread.message_count} total message${thread.message_count !== 1 ? 's' : ''}
-                </div>
-                <div class="search-snippet">
-                    ${escapeHtml(firstMatch.content.substring(0, 200))}${firstMatch.content.length > 200 ? '...' : ''}
+                    ${authors}
                 </div>
             </div>
             `;
