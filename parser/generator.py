@@ -425,9 +425,10 @@ class SiteGenerator:
             authors = list({msg.sender_name for msg in messages if msg.sender_name})
             
             # Add simplified thread information with dates
+            # Make URL relative to the search directory
             search_data.append({
                 'id': thread_idx,
-                'url': first_msg.url,
+                'url': f'../{first_msg.url}',  # Add ../ to go up from search/ to root
                 'title': thread_name,
                 'authors': authors,
                 'start_date': messages[0].date.isoformat() if messages[0].date else '',
