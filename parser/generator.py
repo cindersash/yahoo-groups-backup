@@ -12,6 +12,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from . import constants
 from .message import Message
+from .utils import slugify
 
 
 class SiteGenerator:
@@ -21,14 +22,21 @@ class SiteGenerator:
         """Initialize the SiteGenerator with output directory and template environment.
         
         Args:
-            output_dir: Directory where the static site will be generated
-            forum_name: Name of the forum (used in page titles)
+            output_dir: Base directory where the forum archive will be created
+            forum_name: Name of the forum (used in page titles and subdirectory name)
         """
-        self.output_dir = Path(output_dir)
+        # Create a filesystem-safe version of the forum name for the subdirectory
+        safe_forum_name = slugify(forum_name)
+
+        # Set up directory structure with forum subdirectory
+        self.output_dir = Path(output_dir) / safe_forum_name
         self.forum_name = forum_name
         self.messages_dir = self.output_dir / 'messages'
         self.static_dir = self.output_dir / 'static'
         self.search_dir = self.output_dir / 'search'
+
+        # Store the base output dir for reference
+        self.base_output_dir = Path(output_dir)
 
         # Create output directories
         for directory in [self.output_dir, self.messages_dir, self.static_dir, self.search_dir]:
@@ -427,10 +435,10 @@ class SiteGenerator:
                 continue
 
             first_msg = messages[0]
-            
+
             # Get unique authors in the thread
             authors = list({msg.sender_name for msg in messages if msg.sender_name})
-            
+
             # Add simplified thread information with dates
             # Make URL relative to the search directory
             search_data.append({
