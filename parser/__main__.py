@@ -2,7 +2,7 @@
 """
 Yahoo Groups Mbox to Static Website Converter
 
-This script converts an mbox file containing Yahoo Groups messages into a static website.
+This script converts mbox file containing Yahoo Groups messages into a static website.
 """
 
 import argparse
@@ -16,8 +16,12 @@ from .generator import SiteGenerator
 from .message import Message
 
 
+def _is_valid_message(message: Message) -> bool:
+    return message.html_content and message.date
+
+
 def process_mbox(mbox_path: str) -> List[Message]:
-    """Process an mbox file and return a list of Message objects."""
+    """Process mbox file and return a list of Message objects."""
     messages = []
     msg_id = 1
     processed_count = 0
@@ -36,8 +40,12 @@ def process_mbox(mbox_path: str) -> List[Message]:
         
         for msg in mbox:
             try:
-                messages.append(Message(msg_id, msg))
-                msg_id += 1
+                message = Message(msg_id, msg)
+
+                if _is_valid_message(message):
+                    messages.append(message)
+                    msg_id += 1
+
                 processed_count += 1
                 
                 # Show progress every 100 messages

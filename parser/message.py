@@ -1,6 +1,7 @@
 import email
 from datetime import datetime
 from email.utils import parseaddr, parsedate_to_datetime
+from typing import Optional
 
 from bs4 import BeautifulSoup
 from dateutil import tz
@@ -26,7 +27,7 @@ class Message:
             return default
         return str(value)
 
-    def _parse_date(self, msg: email.message.Message) -> datetime:
+    def _parse_date(self, msg: email.message.Message) -> Optional[datetime]:
         """Parse the date from the email message and ensure it's timezone-aware."""
         date_str = self._get_header(msg, 'Date')
         if not date_str:
@@ -38,7 +39,7 @@ class Message:
                 return dt.replace(tzinfo=tz.UTC)
             return dt
         except (TypeError, ValueError):
-            return datetime.now(tz=tz.UTC)
+            return None
 
     @staticmethod
     def _get_references(msg: email.message.Message) -> list[str]:
@@ -51,7 +52,7 @@ class Message:
         return [ref.strip('<>') for ref in refs if ref.strip()]
 
     @staticmethod
-    def _extract_content(msg: email.message.Message) -> str:
+    def _extract_content(msg: email.message.Message) -> Optional[str]:
         """Extract and process the message content."""
         # Try to get HTML content first
         html_part = None
@@ -85,4 +86,5 @@ class Message:
             # Convert plain text to HTML, preserving line breaks
             text_part = text_part.replace('\n', '<br>\n')
             return f'<div class="plaintext-content">{text_part}</div>'
-        return '<p>No content available</p>'
+
+        return None
