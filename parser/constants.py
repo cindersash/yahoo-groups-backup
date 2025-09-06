@@ -199,14 +199,33 @@ a:hover {
     text-align: center;
 }
 
-#search-input {
-    padding: 8px 12px;
-    width: 300px;
-    max-width: 100%;
-    border: 1px solid #e1e4e8;
-    border-radius: 4px;
-    font-size: 16px;
+.search-form {
+    display: flex;
+    max-width: 500px;
+    margin: 0 auto 20px;
+    gap: 8px;
 }
+
+#search-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#search-button {
+    padding: 10px 20px;
+    background-color: #0366d6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#search-button:hover {
+    background-color: #0356b6;
+}
+
 
 /* Thread preview in index */
 .thread-preview {
@@ -278,10 +297,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 searchInput.placeholder = 'Search not available';
             });
         
-        searchInput.addEventListener('input', function() {
-            const query = this.value.trim().toLowerCase();
+            function performSearch() {
+            const query = searchInput.value.trim().toLowerCase();
             if (query.length < 2) {
-                searchResults.style.display = 'none';
+                searchResults.innerHTML = '<p>Please enter at least 2 characters to search.</p>';
+                searchResults.style.display = 'block';
                 return;
             }
             
@@ -303,7 +323,16 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             displayResults(threadResults);
+        }
+        
+        // Add event listeners
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
         });
+        
+        document.getElementById('search-button').addEventListener('click', performSearch););
     }
     
     function displayResults(threads) {
@@ -371,7 +400,10 @@ SEARCH_HTML_TEMPLATE = """
     
     <main>
         <div class="search-container">
-            <input type="text" id="search-input" placeholder="Search messages...">
+            <div class="search-form">
+                <input type="text" id="search-input" placeholder="Search messages...">
+                <button id="search-button" type="button">Search</button>
+            </div>
             <div id="search-results"></div>
         </div>
     </main>
