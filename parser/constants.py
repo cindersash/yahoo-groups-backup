@@ -283,6 +283,42 @@ a:hover {
     color: #6a737d;
     font-size: 14px;
     margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.thread-dates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 4px;
+    font-size: 13px;
+}
+
+.thread-dates span {
+    display: inline-flex;
+    align-items: center;
+    color: #6a737d;
+}
+
+.thread-dates span::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background-color: #d1d5da;
+    margin-right: 8px;
+}
+
+.thread-dates span:first-child::before {
+    display: none;
+}
+
+.thread-dates span:not(:first-child) {
+    padding-left: 8px;
+    border-left: 1px solid #e1e4e8;
 }
 
 /* Loading indicator */
@@ -559,15 +595,22 @@ SEARCH_PAGE_TEMPLATE = """
                     const response = await fetch('../search/search_index.json');
                     const searchData = await response.json();
                     
-                    // Filter results
+                    // Filter and sort results by thread start date (newest first)
                     const queryLower = query.toLowerCase();
-                    const allResults = searchData.filter(thread => {
-                        const titleMatch = thread.title && thread.title.toLowerCase().includes(queryLower);
-                        const authorMatch = thread.authors && thread.authors.some(author => 
-                            author && author.toLowerCase().includes(queryLower)
-                        );
-                        return titleMatch || authorMatch;
-                    });
+                    let allResults = searchData
+                        .filter(thread => {
+                            const titleMatch = thread.title && thread.title.toLowerCase().includes(queryLower);
+                            const authorMatch = thread.authors && thread.authors.some(author => 
+                                author && author.toLowerCase().includes(queryLower)
+                            );
+                            return titleMatch || authorMatch;
+                        })
+                        .sort((a, b) => {
+                            // Sort by start_date in descending order (newest first)
+                            if (!a.start_date) return 1;
+                            if (!b.start_date) return -1;
+                            return new Date(b.start_date) - new Date(a.start_date);
+                        });
                     
                     // Pagination
                     const totalResults = allResults.length;
@@ -588,8 +631,15 @@ SEARCH_PAGE_TEMPLATE = """
                                         <h3><a href="${escapeHtml(result.url)}">${escapeHtml(result.title)}</a></h3>
                                         <div class="search-meta">
                                             ${result.authors && result.authors.length > 0 
-                                                ? `By: ${result.authors.map(a => escapeHtml(a)).join(', ')}` 
-                                                : 'No author information'}
+                                                ? `<span>By: ${result.authors.map(a => escapeHtml(a)).join(', ')}</span>` 
+                                                : '<span>No author information</span>'}
+                                            ${result.start_date || result.last_date ? `
+                                                <div class="thread-dates">
+                                                    ${result.start_date ? `<span>Started: ${formatDate(result.start_date)}</span>` : ''}
+                                                    ${result.last_date && result.last_date !== result.start_date ? 
+                                                        `<span>Last post: ${formatDate(result.last_date)}</span>` : ''}
+                                                </div>
+                                            ` : ''}
                                         </div>
                                     </div>
                                 `).join('')}
@@ -632,6 +682,18 @@ SEARCH_PAGE_TEMPLATE = """
                 } finally {
                     loadingEl.style.display = 'none';
                 }
+            }
+            
+            function formatDate(isoDate) {
+                if (!isoDate) return '';
+                const date = new Date(isoDate);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
             }
             
             function escapeHtml(unsafe) {
