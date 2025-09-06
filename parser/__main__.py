@@ -9,6 +9,7 @@ import argparse
 import mailbox
 import os
 import sys
+import time
 from typing import List
 
 from .generator import SiteGenerator
@@ -19,24 +20,45 @@ def process_mbox(mbox_path: str) -> List[Message]:
     """Process an mbox file and return a list of Message objects."""
     messages = []
     msg_id = 1
+    processed_count = 0
+    start_time = time.time()
 
     if not os.path.exists(mbox_path):
         print(f"Error: File not found: {mbox_path}")
         sys.exit(1)
 
+    print("Processing mbox file (this may take a while)...")
+    
     try:
         mbox = mailbox.mbox(mbox_path)
+        total_messages = len(mbox)
+        print(f"Found {total_messages} messages to process")
+        
         for msg in mbox:
             try:
                 messages.append(Message(msg_id, msg))
                 msg_id += 1
+                processed_count += 1
+                
+                # Show progress every 100 messages
+                if processed_count % 100 == 0:
+                    elapsed = time.time() - start_time
+                    rate = processed_count / elapsed if elapsed > 0 else 0
+                    print(f"Processed {processed_count}/{total_messages} messages ({processed_count/total_messages:.1%}) - {rate:.1f} msg/sec")
+                    
             except Exception as e:
-                print(f"Error processing message {msg_id}: {str(e)}")
+                print(f"\nError processing message {msg_id}: {str(e)}")
                 continue
+                
     except Exception as e:
-        print(f"Error reading mbox file: {str(e)}")
+        print(f"\nError reading mbox file: {str(e)}")
         sys.exit(1)
 
+    elapsed = time.time() - start_time
+    print(f"\nFinished processing {processed_count} messages in {elapsed:.1f} seconds")
+    if elapsed > 0:
+        print(f"Average processing rate: {processed_count/elapsed:.1f} messages/second")
+        
     return messages
 
 

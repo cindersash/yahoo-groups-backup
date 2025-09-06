@@ -3,6 +3,7 @@ HTML generation utilities for the Yahoo Groups Mbox to Static Website Converter.
 """
 
 import json
+import time
 from pathlib import Path
 from typing import List
 
@@ -35,18 +36,40 @@ class SiteGenerator:
 
     def generate_site(self, messages: List[Message]) -> None:
         """Generate the complete static website."""
+        print("\nGenerating static website...")
+        start_time = time.time()
+        total_messages = len(messages)
+        
         # Copy static files
+        print("Copying static files...")
         self._copy_static_files()
-
+        
         # Generate individual message pages
-        for message in messages:
+        print(f"Generating {total_messages} message pages...")
+        generated_count = 0
+        for i, message in enumerate(messages, 1):
             self._generate_message_page(message, messages)
-
+            if message.html_content and message.html_content.strip() != '<p>No content available</p>':
+                generated_count += 1
+            
+            # Show progress every 100 messages
+            if i % 100 == 0 or i == total_messages:
+                elapsed = time.time() - start_time
+                rate = i / elapsed if elapsed > 0 else 0
+                print(f"  Processed {i}/{total_messages} messages ({i/total_messages:.1%}), "
+                      f"generated {generated_count} pages - {rate:.1f} msg/sec")
+        
         # Generate index page
+        print("\nGenerating index page...")
         self._generate_index_page(messages)
-
+        
         # Generate search index
+        print("Generating search index...")
         self._generate_search_index(messages)
+        
+        elapsed = time.time() - start_time
+        print(f"\nWebsite generation completed in {elapsed:.1f} seconds")
+        print(f"Total pages generated: {generated_count} message pages + index + search")
 
     def _copy_static_files(self) -> None:
         """Copy static files (CSS, JS) to the output directory."""
@@ -60,6 +83,10 @@ class SiteGenerator:
 
     def _generate_message_page(self, message: Message, all_messages: List[Message]) -> None:
         """Generate an HTML page for a single message."""
+        # Skip if message has no content
+        if not message.html_content or message.html_content.strip() == '<p>No content available</p>':
+            return
+            
         # Find replies to this message
         replies = [m for m in all_messages if message.id in [int(ref) for ref in m.references if ref.isdigit()]]
 
