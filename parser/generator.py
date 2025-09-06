@@ -348,7 +348,6 @@ class SiteGenerator:
 
                 first_msg = messages[0]
                 last_msg = messages[-1]
-                reply_count = len(messages) - 1
 
                 months_html += f"""
                 <div class="thread-preview">
@@ -356,7 +355,6 @@ class SiteGenerator:
                     <div class="thread-meta">
                         Started by <strong>{self._escape_html(first_msg.sender_name or first_msg.sender_email or 'Unknown')}</strong> | 
                         {len(messages)} message{'s' if len(messages) != 1 else ''} | 
-                        {reply_count} repl{'y' if reply_count == 1 else 'ies' if reply_count > 1 else 'ies'} |
                         Last reply: {last_msg.date.strftime('%Y-%m-%d') if last_msg.date else 'Unknown date'}
                     </div>
                     <div class="message-snippet">
