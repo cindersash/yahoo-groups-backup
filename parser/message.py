@@ -6,6 +6,8 @@ from typing import Optional
 from bs4 import BeautifulSoup
 from dateutil import tz
 
+from parser.constants import PREFIXES_TO_STRIP
+
 
 class Message:
     """Represents an email message with its metadata and content."""
@@ -19,14 +21,24 @@ class Message:
         self.references = self._get_references(msg)
         self.html_content = self._extract_content(msg)
         self.url = f'messages/{self.id}.html'
-        
+
     @staticmethod
     def _normalize_subject(subject: str) -> str:
         """Normalize thread subject by removing 'Re:' and extra whitespace."""
         if not subject:
             return ''
-        # Remove 'Re:', 'Fwd:', etc. and extra whitespace
-        return subject.lstrip("Re: ").lstrip("RE: ").lstrip("Fwd: ").lstrip("FWD: ").strip()
+
+        stripped = True
+        while stripped:
+            stripped = False
+            lower_subject = subject.lower()
+            for p in PREFIXES_TO_STRIP:
+                if lower_subject.startswith(p.lower()):
+                    subject = subject[len(p):].lstrip()  # remove the prefix + leading spaces
+                    stripped = True
+                    break  # check prefixes again from the start
+
+        return subject.strip()
 
     @staticmethod
     def _get_header(msg: email.message.Message, header: str, default: str = '') -> str:

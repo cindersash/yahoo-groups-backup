@@ -1,3 +1,5 @@
+PREFIXES_TO_STRIP = {"re:", "fwd:", "[LETTERBOXINGTEXAS]"}
+
 # CSS styles for the static website
 CSS_STYLES = """
 /* Basic styling for the archive */
