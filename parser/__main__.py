@@ -52,14 +52,18 @@ class Message:
         return str(value)
 
     def _parse_date(self, msg: email.message.Message) -> datetime:
-        """Parse the date from the email message."""
+        """Parse the date from the email message and ensure it's timezone-aware."""
         date_str = self._get_header(msg, 'Date')
         if not date_str:
-            return datetime.now()
+            return datetime.now(tz=tz.UTC)
         try:
-            return parsedate_to_datetime(date_str)
+            dt = parsedate_to_datetime(date_str)
+            # If the datetime is naive, make it timezone-aware with UTC
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=tz.UTC)
+            return dt
         except (TypeError, ValueError):
-            return datetime.now()
+            return datetime.now(tz=tz.UTC)
 
     def _get_references(self, msg: email.message.Message) -> List[str]:
         """Extract message references for threading."""
@@ -487,9 +491,7 @@ def generate_index_page(messages: List[Message], output_dir: Path):
         <script src="static/script.js"></script>
     </body>
     </html>
-    """.format(
-        months_html=months_html
-    )
+    """
 
     # Write to file
     with open(output_dir / 'index.html', 'w', encoding='utf-8') as f:
