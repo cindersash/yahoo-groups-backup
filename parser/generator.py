@@ -339,7 +339,7 @@ class SiteGenerator:
                 <div class="thread-preview">
                     <h3><a href="{first_msg.url}">{self._escape_html(thread_name)}</a></h3>
                     <div class="thread-meta">
-                        Started by <strong>{self._escape_html(first_msg.sender_name)}</strong> | 
+                        Started by <strong>{self._escape_html(first_msg.sender_name or first_msg.sender_email or 'Unknown')}</strong> | 
                         {len(messages)} message{'s' if len(messages) != 1 else ''} | 
                         {reply_count} repl{'y' if reply_count == 1 else 'ies' if reply_count > 1 else 'ies'} |
                         Last reply: {last_msg.date.strftime('%Y-%m-%d') if last_msg.date else 'Unknown date'}
