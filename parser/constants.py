@@ -412,15 +412,43 @@ a:hover {
 @media (max-width: 768px) {
     body {
         padding: 10px;
+        font-size: 15px !important;
     }
     
     .message {
-        padding: 12px;
+        padding: 12px !important;
     }
     
     .reply-message {
         margin-left: 15px !important;
     }
+    
+    .message-content {
+        font-size: 15px !important;
+    }
+    
+    .message-content p, 
+    .message-content div, 
+    .message-content span, 
+    .message-content li, 
+    .message-content td, 
+    .message-content th, 
+    .message-content pre, 
+    .message-content code, 
+    .message-content blockquote {
+        font-size: 15px !important;
+    }
+    
+    .thread-title {
+        font-size: 1.5em !important;
+    }
+    
+    .message-content h1 { font-size: 1.5em !important; }
+    .message-content h2 { font-size: 1.3em !important; }
+    .message-content h3 { font-size: 1.15em !important; }
+    .message-content h4 { font-size: 1em !important; }
+    .message-content h5 { font-size: 0.9em !important; }
+    .message-content h6 { font-size: 0.85em !important; }
 }
 """
 

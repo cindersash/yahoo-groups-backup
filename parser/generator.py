@@ -217,6 +217,33 @@ class SiteGenerator:
         html += "</ul>\n</div>\n"
         return html
 
+    @staticmethod
+    def _clean_html_content(html: str) -> str:
+        """Clean up HTML content to ensure consistent styling."""
+        if not html:
+            return ""
+            
+        # Parse the HTML with BeautifulSoup
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Remove any inline styles and classes
+        for tag in soup.find_all(True):
+            # Remove style attributes
+            if 'style' in tag.attrs:
+                del tag.attrs['style']
+                
+            # Remove class attributes from most elements (keep our utility classes)
+            if 'class' in tag.attrs and tag.name not in ['div', 'span']:
+                del tag.attrs['class']
+                
+            # Remove font tags
+            if tag.name == 'font':
+                tag.unwrap()
+                
+        # Convert back to string
+        return str(soup)
+
     def _generate_thread_page(self, thread: List[Message], thread_id: int) -> None:
         """Generate an HTML page for a single thread."""
         if not thread:
@@ -228,17 +255,31 @@ class SiteGenerator:
         # Generate HTML for each message in the thread
         messages_html = ""
         for i, message in enumerate(thread, 1):
+            # Clean up the HTML content
+            cleaned_content = self._clean_html_content(message.html_content)
+            
+            # Format the message date
+            message_date = message.date.strftime('%Y-%m-%d %H:%M:%S %Z') if message.date else 'Unknown date'
+            
+            # Format the sender info
+            sender_info = []
+            if message.sender_name.strip():
+                sender_info.append(self._escape_html(message.sender_name))
+            if message.sender_email:
+                sender_info.append(f"({self._escape_html(message.sender_email)})")
+            sender_display = ' '.join(sender_info) if sender_info else 'Unknown sender'
+            
             messages_html += f"""
             <div class="message {'first-message' if i == 1 else 'reply-message'}">
                 <div class="message-header">
                     <h3 class="message-subject">{self._escape_html(message.subject)}</h3>
                     <div class="message-meta">
-                       From: <strong>{(self._escape_html(message.sender_name) + ' (' if message.sender_name.strip() else '') + self._escape_html(message.sender_email) + (')' if message.sender_name.strip() else '')}</strong> | 
-                        Date: {message.date.strftime('%Y-%m-%d %H:%M:%S %Z')}
+                        From: <strong>{sender_display}</strong> | 
+                        Date: {message_date}
                     </div>
                 </div>
                 <div class="message-content">
-                    {message.html_content}
+                    {cleaned_content}
                 </div>
             </div>
             """
