@@ -159,7 +159,7 @@ class SiteGenerator:
                     <div class="message-header">
                         <h2 class="message-subject">{subject}</h2>
                         <div class="message-meta">
-                            From: <strong>{sender_name}</strong> &lt;{sender_email}&gt; | 
+                            From: <strong>{sender_name} ({sender_email})</strong> | 
                             Date: {date}
                         </div>
                     </div>
@@ -233,7 +233,7 @@ class SiteGenerator:
                 <div class="message-header">
                     <h3 class="message-subject">{self._escape_html(message.subject)}</h3>
                     <div class="message-meta">
-                        From: <strong>{self._escape_html(message.sender_name)}</strong> &lt;{self._escape_html(message.sender_email)}&gt; | 
+                       From: <strong>{(self._escape_html(message.sender_name) + ' (' if message.sender_name.strip() else '') + self._escape_html(message.sender_email) + (')' if message.sender_name.strip() else '')}</strong> | 
                         Date: {message.date.strftime('%Y-%m-%d %H:%M:%S %Z')}
                     </div>
                 </div>
@@ -354,7 +354,7 @@ class SiteGenerator:
                 <div class="thread-preview">
                     <h3><a href="{first_msg.url}">{self._escape_html(thread_name)}</a></h3>
                     <div class="thread-meta">
-                        Started by <strong>{self._escape_html(first_msg.sender_name or first_msg.sender_email or 'Unknown')}</strong> | 
+                        Started by <strong>{(self._escape_html(first_msg.sender_name) + ' (' if first_msg.sender_name.strip() else '') + self._escape_html(first_msg.sender_email) + (')' if first_msg.sender_name.strip() else '') if first_msg.sender_email else 'Unknown'}</strong> | 
                         {len(messages)} message{'s' if len(messages) != 1 else ''} | 
                         Last reply: {last_msg.date.strftime('%Y-%m-%d') if last_msg.date else 'Unknown date'}
                     </div>
