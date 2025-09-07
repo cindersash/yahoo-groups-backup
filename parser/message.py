@@ -72,9 +72,8 @@ class Message:
         # First decode any MIME-encoded parts
         subject = cls._decode_mime_header(subject)
 
-        # Extract original subject from parenthetical references like "... (was [group] Original Subject)"
-        was_pattern = r"\(\s*was\s+(?:re:\s*)?\[.*?\]\s*(?:re:\s*)?(.*?)\)$"
-        match = re.search(was_pattern, subject, flags=re.IGNORECASE)
+        # Extract content from parenthetical references like "... (was Original Subject)"
+        match = re.search(r"\(\s*was\s+([^)]*)\)", subject, flags=re.IGNORECASE)
         if match:
             subject = match.group(1).strip()
 
