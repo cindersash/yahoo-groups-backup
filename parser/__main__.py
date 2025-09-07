@@ -10,6 +10,7 @@ import mailbox
 import os
 import sys
 import time
+from datetime import datetime
 from typing import List
 
 from .generator import SiteGenerator
@@ -17,7 +18,14 @@ from .message import Message
 
 
 def _is_valid_message(message: Message) -> bool:
-    return message.html_content and message.date
+    # The first messages should be from 1998. Anything earlier is probably corrupted.
+    if message.date:
+        # Make the comparison timezone-aware by localizing the cutoff date to the message timezone
+        cutoff_date = datetime(1998, 1, 1, tzinfo=message.date.tzinfo)
+        if message.date < cutoff_date:
+            return False
+
+    return bool(message.html_content and message.date)
 
 
 def process_mbox(mbox_path: str) -> dict[str, List[Message]]:
