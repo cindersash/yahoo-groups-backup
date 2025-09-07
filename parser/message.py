@@ -10,6 +10,7 @@ from dateutil import tz
 from parser.constants import PREFIXES_TO_STRIP
 
 DEFAULT_SUBJECT = "(No subject)"
+BRACKET_REGEX = re.compile(r"^\s*\[.*?]\s*")
 
 
 class Message:
@@ -35,7 +36,7 @@ class Message:
         while stripped:
             stripped = False
 
-            subject = re.sub(r"^\s*\[.*?]\s*", "", subject)
+            subject = re.sub(BRACKET_REGEX, "", subject)
 
             lower_subject = subject.lower()
             for p in PREFIXES_TO_STRIP:
@@ -44,7 +45,7 @@ class Message:
                     stripped = True
                     break  # check prefixes again from the start
 
-            if subject.startswith("["):
+            if re.match(BRACKET_REGEX, subject):
                 stripped = True
 
         subject = subject.strip()
