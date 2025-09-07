@@ -60,16 +60,23 @@ class Message:
     def _normalize_subject(cls, subject: str) -> str:
         """Normalize thread subject by:
         1. Decoding MIME-encoded parts
-        2. Removing 'Re:', 'Fwd:', etc. prefixes
-        3. Removing [text] prefixes
-        4. Removing [X Attachment(s)] suffixes
-        5. Normalizing whitespace
+        2. Extracting original subject from parenthetical references (e.g., '... (was Re: [group] Re: Original Subject)')
+        3. Removing 'Re:', 'Fwd:', etc. prefixes
+        4. Removing [text] prefixes
+        5. Removing [X Attachment(s)] suffixes
+        6. Normalizing whitespace
         """
         if not subject:
             return ""
 
         # First decode any MIME-encoded parts
         subject = cls._decode_mime_header(subject)
+
+        # Extract original subject from parenthetical references like "... (was [group] Original Subject)"
+        was_pattern = r"\(\s*was\s+(?:re:\s*)?\[.*?\]\s*(?:re:\s*)?(.*?)\)$"
+        match = re.search(was_pattern, subject, flags=re.IGNORECASE)
+        if match:
+            subject = match.group(1).strip()
 
         # Remove any attachment indicators from the end (e.g., [1 Attachment], [2 Attachments], etc.)
         subject = re.sub(r"\s*\[\s*\d+\s+Attachments?\s*]\s*$", "", subject, flags=re.IGNORECASE)
@@ -79,8 +86,10 @@ class Message:
         while stripped:
             stripped = False
 
+            # Remove [bracketed] prefixes
             subject = re.sub(BRACKET_REGEX, "", subject)
 
+            # Check for and remove reply/forward prefixes (Re:, Fwd:, etc.)
             lower_subject = subject.lower()
             for p in PREFIXES_TO_STRIP:
                 if lower_subject.startswith(p.lower()):
@@ -88,6 +97,7 @@ class Message:
                     stripped = True
                     break  # check prefixes again from the start
 
+            # If we still have [bracketed] content, strip it in the next iteration
             if re.match(BRACKET_REGEX, subject):
                 stripped = True
 

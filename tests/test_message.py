@@ -36,6 +36,12 @@ class TestMessage:
             # Test with empty or whitespace subjects
             ("", DEFAULT_SUBJECT),
             ("   ", DEFAULT_SUBJECT),
+            # Test with parenthetical references
+            ("Northeast Texas Fires (was Re: [letterboxingtexas] Re: Balloon Festival)", "Balloon Festival"),
+            ("Meeting (was Re: [group] Re: Project Update)", "Project Update"),
+            ("(was Re: [test] Re: Original Subject)", "Original Subject"),
+            ("Snake Phenomena (was [letterboxingtexas] Spring must be close...)", "Spring must be close..."),
+            ("(was [test] Original Subject)", "Original Subject"),
             # Test with only prefixes
             ("[Test]", DEFAULT_SUBJECT),
             ("Re: ", DEFAULT_SUBJECT),
