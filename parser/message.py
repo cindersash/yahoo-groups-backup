@@ -1,4 +1,5 @@
 import email
+import re
 from datetime import datetime
 from email.utils import parseaddr, parsedate_to_datetime
 from typing import Optional
@@ -8,13 +9,15 @@ from dateutil import tz
 
 from parser.constants import PREFIXES_TO_STRIP
 
+DEFAULT_SUBJECT = '(No subject)'
+
 
 class Message:
     """Represents an email message with its metadata and content."""
 
     def __init__(self, msg_id: int, msg: email.message.Message):
         self.id = msg_id
-        self.subject = self._get_header(msg, 'Subject', '(No subject)')
+        self.subject = self._get_header(msg, 'Subject', DEFAULT_SUBJECT)
         self.normalized_subject = self._normalize_subject(self.subject)
         self.sender_name, self.sender_email = parseaddr(msg['From'])
         self.date = self._parse_date(msg)
@@ -24,13 +27,16 @@ class Message:
 
     @staticmethod
     def _normalize_subject(subject: str) -> str:
-        """Normalize thread subject by removing 'Re:' and extra whitespace."""
+        """Normalize thread subject by removing 'Re:', [text] prefixes, and extra whitespace."""
         if not subject:
             return ''
 
         stripped = True
         while stripped:
             stripped = False
+
+            subject = re.sub(r'^\s*\[.*?]\s*', '', subject)
+
             lower_subject = subject.lower()
             for p in PREFIXES_TO_STRIP:
                 if lower_subject.startswith(p.lower()):
@@ -38,7 +44,12 @@ class Message:
                     stripped = True
                     break  # check prefixes again from the start
 
-        return subject.strip()
+            if subject.startswith("["):
+                stripped = True
+
+        subject = subject.strip()
+
+        return subject if subject else DEFAULT_SUBJECT
 
     @staticmethod
     def _get_header(msg: email.message.Message, header: str, default: str = '') -> str:
