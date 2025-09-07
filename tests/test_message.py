@@ -1,4 +1,5 @@
 from email.message import Message as EmailMessage
+from email.header import Header
 
 import pytest
 
@@ -43,3 +44,48 @@ class TestMessage:
 
         # The normalized subject should be stored in the normalized_subject attribute
         assert message.normalized_subject == expected_output
+
+    @pytest.mark.parametrize(
+        "input_subject, expected_output",
+        [
+            # Test MIME-encoded subject with UTF-8 and emoji
+            (
+                "_=?UTF-8?Q?[LETTERBOXINGTEXAS]_A?= =?UTF-8?Q?_Old_Bum_&_A_Tall_Cookie_=F0=9F=98=82?=",
+                "A Old Bum & A Tall Cookie 😂",
+            ),
+            # Test MIME-encoded with different charsets
+            ("=?ISO-8859-1?Q?This=20is=20some=20text?=", "This is some text"),
+            # Test with multiple encoded parts
+            ("=?utf-8?q?Hello_=F0=9F=98=80?= =?utf-8?q?_World?=", "Hello 😀 World"),
+            # Test with mixed encoded and plain text
+            ("Important: =?utf-8?q?Meeting_=F0=9F=93=85?= tomorrow", "Important: Meeting 📅 tomorrow"),
+            # Test with MIME-encoded Re: prefix
+            ("=?utf-8?q?Re=3A_=F0=9F=93=9D_Project_Update?=", "📝 Project Update"),
+            # Test with invalid encoding (should be handled gracefully)
+            ("=?invalid-charset?q?test?=", "test"),
+        ],
+    )
+    def test_mime_encoded_subjects(self, input_subject: str, expected_output: str):
+        """Test that MIME-encoded subjects are properly decoded and normalized."""
+        email_message = EmailMessage()
+        email_message["From"] = "sender@example.com"
+        email_message["Subject"] = input_subject
+
+        message = Message(msg_id=1, msg=email_message)
+
+        # The normalized subject should have the MIME encoding properly decoded
+        assert message.normalized_subject == expected_output
+
+    def test_mime_encoded_header_directly(self):
+        """Test the _decode_mime_header method with various edge cases."""
+        # Test with None input
+        assert Message._decode_mime_header(None) == ""
+
+        # Test with empty string
+        assert Message._decode_mime_header("") == ""
+
+        # Test with non-string input
+        assert Message._decode_mime_header(123) == "123"
+
+        # Test with already decoded string
+        assert Message._decode_mime_header("Hello World") == "Hello World"

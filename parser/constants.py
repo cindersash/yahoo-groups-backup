@@ -1,4 +1,4 @@
-PREFIXES_TO_STRIP = {"re:", "fw:", "fwd:", "=?UTF-8?Q?"}
+PREFIXES_TO_STRIP = {"re:", "fw:", "fwd:"}
 
 # CSS styles for the static website
 CSS_STYLES = """

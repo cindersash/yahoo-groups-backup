@@ -1,8 +1,9 @@
 import email
 import re
 from datetime import datetime
+from email.header import decode_header
 from email.utils import parseaddr, parsedate_to_datetime
-from typing import Optional
+from typing import Optional, Tuple, List, Union
 
 from bs4 import BeautifulSoup
 from dateutil import tz
@@ -26,11 +27,43 @@ class Message:
         self.html_content = self._extract_content(msg)
         self.url = f"messages/{self.id}.html"
 
-    @staticmethod
-    def _normalize_subject(subject: str) -> str:
-        """Normalize thread subject by removing 'Re:', [text] prefixes, and extra whitespace."""
+    @classmethod
+    def _decode_mime_header(cls, header: str) -> str:
+        """Decode MIME-encoded header values."""
+        if not header:
+            return ""
+
+        try:
+            # Decode the header parts
+            decoded_parts = []
+            for part, encoding in decode_header(header):
+                if isinstance(part, bytes):
+                    # Try to decode with the specified encoding, fall back to utf-8 with replace
+                    try:
+                        decoded_part = part.decode(encoding or "utf-8", errors="replace")
+                    except (LookupError, UnicodeError):
+                        # If the encoding is unknown or invalid, try utf-8 with replace
+                        decoded_part = part.decode("utf-8", errors="replace")
+                    decoded_parts.append(decoded_part)
+                else:
+                    decoded_parts.append(part)
+
+            # Join all parts, normalize whitespace, and remove any leading underscores
+            result = " ".join(str(part).strip() for part in decoded_parts if part)
+            # Remove any leading underscores that might be left after decoding
+            return result.lstrip("_").strip()
+        except Exception as e:
+            # If anything goes wrong, return the original string with leading underscores removed
+            return str(header).lstrip("_").strip()
+
+    @classmethod
+    def _normalize_subject(cls, subject: str) -> str:
+        """Normalize thread subject by decoding MIME, removing 'Re:', [text] prefixes, and extra whitespace."""
         if not subject:
             return ""
+
+        # First decode any MIME-encoded parts
+        subject = cls._decode_mime_header(subject)
 
         stripped = True
         while stripped:
