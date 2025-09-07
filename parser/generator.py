@@ -1,6 +1,7 @@
 """
 HTML generation utilities for the Yahoo Groups Mbox to Static Website Converter.
 """
+
 import json
 import time
 from datetime import datetime
@@ -20,7 +21,7 @@ class SiteGenerator:
 
     def __init__(self, output_dir: str, forum_name: str):
         """Initialize the SiteGenerator with output directory and template environment.
-        
+
         Args:
             output_dir: Base directory where the forum archive will be created
             forum_name: Name of the forum (used in page titles and subdirectory name)
@@ -31,9 +32,9 @@ class SiteGenerator:
         # Set up directory structure with forum subdirectory
         self.output_dir = Path(output_dir) / safe_forum_name
         self.forum_name = forum_name
-        self.messages_dir = self.output_dir / 'messages'
-        self.static_dir = self.output_dir / 'static'
-        self.search_dir = self.output_dir / 'search'
+        self.messages_dir = self.output_dir / "messages"
+        self.static_dir = self.output_dir / "static"
+        self.search_dir = self.output_dir / "search"
 
         # Store the base output dir for reference
         self.base_output_dir = Path(output_dir)
@@ -44,14 +45,13 @@ class SiteGenerator:
 
         # Set up template environment
         self.env = Environment(
-            loader=FileSystemLoader(Path(__file__).parent / 'templates'),
-            autoescape=select_autoescape(['html', 'xml'])
+            loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(["html", "xml"])
         )
 
     def generate_site(self, threads: dict[str, List[Message]]) -> None:
         """
         Generate the complete static website with thread-based pages.
-        
+
         Args:
             threads: Dictionary where keys are thread names and values are lists of messages
         """
@@ -80,8 +80,10 @@ class SiteGenerator:
             if i % 10 == 0 or i == len(threads):
                 elapsed = time.time() - start_time
                 rate = processed_messages / elapsed if elapsed > 0 else 0
-                print(f"  Processed {i}/{len(threads)} threads "
-                      f"({processed_messages}/{total_messages} messages) - {rate:.1f} msg/sec")
+                print(
+                    f"  Processed {i}/{len(threads)} threads "
+                    f"({processed_messages}/{total_messages} messages) - {rate:.1f} msg/sec"
+                )
 
         # Generate paginated index pages
         print("\nGenerating index pages...")
@@ -107,17 +109,17 @@ class SiteGenerator:
     def _copy_static_files(self) -> None:
         """Copy static files (CSS, JS) to the output directory."""
         # Write CSS file
-        with open(self.static_dir / 'style.css', 'w', encoding='utf-8') as f:
+        with open(self.static_dir / "style.css", "w", encoding="utf-8") as f:
             f.write(constants.CSS_STYLES)
 
         # Write JavaScript file
-        with open(self.static_dir / 'script.js', 'w', encoding='utf-8') as f:
+        with open(self.static_dir / "script.js", "w", encoding="utf-8") as f:
             f.write(constants.JAVASCRIPT_CODE)
 
     def _generate_message_page(self, message: Message, all_messages: List[Message]) -> None:
         """Generate an HTML page for a single message."""
         # Skip if message has no content
-        if not message.html_content or message.html_content.strip() == '<p>No content available</p>':
+        if not message.html_content or message.html_content.strip() == "<p>No content available</p>":
             return
 
         # Find replies to this message
@@ -183,15 +185,15 @@ class SiteGenerator:
             subject=self._escape_html(message.subject),
             sender_name=self._escape_html(message.sender_name),
             sender_email=self._escape_html(message.sender_email),
-            date=message.date.strftime('%Y-%m-%d %H:%M:%S %Z'),
+            date=message.date.strftime("%Y-%m-%d %H:%M:%S %Z"),
             content=message.html_content,
-            parent_html=self._generate_parent_html(parent) if parent else '',
-            replies_html=self._generate_replies_html(replies) if replies else ''
+            parent_html=self._generate_parent_html(parent) if parent else "",
+            replies_html=self._generate_replies_html(replies) if replies else "",
         )
 
         # Write to file
         output_file = self.messages_dir / f"{message.id}.html"
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(html)
 
     def _generate_parent_html(self, parent: Message) -> str:
@@ -205,14 +207,14 @@ class SiteGenerator:
     def _generate_replies_html(self, replies: List[Message]) -> str:
         """Generate HTML for replies to a message."""
         if not replies:
-            return ''
+            return ""
 
         html = '<div class="replies">\n'
-        html += '<h3>Replies ({})</h3>\n'.format(len(replies))
+        html += "<h3>Replies ({})</h3>\n".format(len(replies))
         html += '<ul class="reply-list">\n'
         for reply in sorted(replies, key=lambda x: x.date):
             html += f'<li><a href="{reply.url}">{self._escape_html(reply.subject)}</a> - {self._escape_html(reply.sender_name)}</li>\n'
-        html += '</ul>\n</div>\n'
+        html += "</ul>\n</div>\n"
         return html
 
     def _generate_thread_page(self, thread: List[Message], thread_id: int) -> None:
@@ -224,7 +226,7 @@ class SiteGenerator:
         thread.sort(key=lambda x: x.date)
 
         # Generate HTML for each message in the thread
-        messages_html = ''
+        messages_html = ""
         for i, message in enumerate(thread, 1):
             messages_html += f"""
             <div class="message {'first-message' if i == 1 else 'reply-message'}">
@@ -242,7 +244,7 @@ class SiteGenerator:
             """
 
         # Create the complete HTML
-        thread_subject = thread[0].normalized_subject or 'No subject'
+        thread_subject = thread[0].normalized_subject or "No subject"
         html = f"""
         <!DOCTYPE html>
         <html lang="en">
@@ -282,24 +284,25 @@ class SiteGenerator:
         """
 
         # Create a URL-friendly filename for the thread
-        safe_subject = ''.join(c if c.isalnum() or c in ' -_' else '_' for c in thread_subject)
+        safe_subject = "".join(c if c.isalnum() or c in " -_" else "_" for c in thread_subject)
         safe_subject = safe_subject[:50]  # Limit length
         filename = f"thread_{thread_id}_{safe_subject}.html"
 
         # Write to file
         output_file = self.messages_dir / filename
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(html)
 
         # Update the URL for all messages in this thread
         for msg in thread:
-            msg.url = f'messages/{filename}'
+            msg.url = f"messages/{filename}"
 
-    def _generate_index_page(self, threads: dict[str, List[Message]], page: int = 1,
-                             threads_per_page: int = 25) -> None:
+    def _generate_index_page(
+        self, threads: dict[str, List[Message]], page: int = 1, threads_per_page: int = 25
+    ) -> None:
         """
         Generate the main index page with paginated threads.
-        
+
         Args:
             threads: Dictionary where keys are thread names and values are lists of messages
             page: Current page number (1-based)
@@ -307,9 +310,7 @@ class SiteGenerator:
         """
         # Convert threads to a list and sort by most recent message date
         sorted_threads = sorted(
-            threads.items(),
-            key=lambda x: x[1][-1].date if x[1] and x[1][-1].date else datetime.min,
-            reverse=True
+            threads.items(), key=lambda x: x[1][-1].date if x[1] and x[1][-1].date else datetime.min, reverse=True
         )
 
         # Calculate pagination
@@ -333,15 +334,15 @@ class SiteGenerator:
             if not last_message.date:
                 continue
 
-            month_year = last_message.date.strftime('%B %Y')
+            month_year = last_message.date.strftime("%B %Y")
             if month_year not in threads_by_month:
                 threads_by_month[month_year] = []
             threads_by_month[month_year].append((thread_name, messages))
 
         # Generate HTML for each month
-        months_html = ''
+        months_html = ""
         for month_year, month_threads in threads_by_month.items():
-            months_html += f'<h2>{month_year}</h2>\n'
+            months_html += f"<h2>{month_year}</h2>\n"
             for thread_name, messages in month_threads:
                 if not messages:
                     continue
@@ -410,18 +411,18 @@ class SiteGenerator:
 
         # Determine the output filename
         if page == 1:
-            output_file = self.output_dir / 'index.html'
+            output_file = self.output_dir / "index.html"
         else:
-            output_file = self.output_dir / f'index{page}.html'
+            output_file = self.output_dir / f"index{page}.html"
 
         # Write to file
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(html)
 
     def _generate_search_index(self, threads: dict[str, List[Message]]) -> None:
         """
         Generate a search index JSON file and search page.
-        
+
         Args:
             threads: Dictionary where keys are thread names and values are lists of messages
         """
@@ -439,63 +440,65 @@ class SiteGenerator:
 
             # Add simplified thread information with dates
             # Make URL relative to the search directory
-            search_data.append({
-                'id': thread_idx,
-                'url': f'../{first_msg.url}',  # Add ../ to go up from search/ to root
-                'title': thread_name,
-                'authors': authors,
-                'message_count': len(messages),
-                'start_date': messages[0].date.isoformat() if messages[0].date else '',
-                'last_date': messages[-1].date.isoformat() if messages[-1].date else ''
-            })
+            search_data.append(
+                {
+                    "id": thread_idx,
+                    "url": f"../{first_msg.url}",  # Add ../ to go up from search/ to root
+                    "title": thread_name,
+                    "authors": authors,
+                    "message_count": len(messages),
+                    "start_date": messages[0].date.isoformat() if messages[0].date else "",
+                    "last_date": messages[-1].date.isoformat() if messages[-1].date else "",
+                }
+            )
 
         # Ensure search directory exists
         self.search_dir.mkdir(parents=True, exist_ok=True)
 
         # Write search index to file
-        search_file = self.search_dir / 'search_index.json'
-        with open(search_file, 'w', encoding='utf-8') as f:
+        search_file = self.search_dir / "search_index.json"
+        with open(search_file, "w", encoding="utf-8") as f:
             json.dump(search_data, f, ensure_ascii=False, indent=2)
 
         # Write search page
-        search_page = self.search_dir / 'index.html'
-        with open(search_page, 'w', encoding='utf-8') as f:
+        search_page = self.search_dir / "index.html"
+        with open(search_page, "w", encoding="utf-8") as f:
             f.write(constants.SEARCH_PAGE_TEMPLATE)
 
     @staticmethod
     def _escape_html(text: str) -> str:
         """Escape HTML special characters."""
         if not text:
-            return ''
+            return ""
         return (
             str(text)
-            .replace('&', '&amp;')
-            .replace('<', '&lt;')
-            .replace('>', '&gt;')
-            .replace('"', '&quot;')
-            .replace("'", '&#39;')
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#39;")
         )
 
     @staticmethod
     def _generate_pagination_html(current_page: int, total_pages: int) -> str:
         """
         Generate HTML for pagination controls.
-        
+
         Args:
             current_page: Current page number (1-based)
             total_pages: Total number of pages
-            
+
         Returns:
             HTML string with pagination controls
         """
         if total_pages <= 1:
-            return ''
+            return ""
 
         pagination = ['<div class="pagination-controls">']
 
         # Previous button
         if current_page > 1:
-            prev_page = 'index.html' if current_page == 2 else f'index{current_page - 1}.html'
+            prev_page = "index.html" if current_page == 2 else f"index{current_page - 1}.html"
             pagination.append(f'<a href="{prev_page}" class="page-link">&laquo; Previous</a>')
         else:
             pagination.append('<span class="page-link disabled">&laquo; Previous</span>')
@@ -522,7 +525,7 @@ class SiteGenerator:
             if p == current_page:
                 pagination.append(f'<span class="page-link current">{p}</span>')
             else:
-                page_url = f'index{p}.html' if p > 1 else 'index.html'
+                page_url = f"index{p}.html" if p > 1 else "index.html"
                 pagination.append(f'<a href="{page_url}" class="page-link">{p}</a>')
 
         # Last page and ellipsis if needed
@@ -537,20 +540,20 @@ class SiteGenerator:
         else:
             pagination.append('<span class="page-link disabled">Next &raquo;</span>')
 
-        pagination.append('</div>')
-        return '\n'.join(pagination)
+        pagination.append("</div>")
+        return "\n".join(pagination)
 
     @staticmethod
     def _get_snippet(html: str, max_length: int = 200) -> str:
         """Get a text snippet from HTML content."""
         if not html:
-            return ''
+            return ""
 
         # Remove HTML tags and decode HTML entities
-        soup = BeautifulSoup(html, 'lxml')
+        soup = BeautifulSoup(html, "lxml")
         text = soup.get_text()
 
         # Truncate and add ellipsis if needed
         if len(text) > max_length:
-            return text[:max_length].rsplit(' ', 1)[0] + '...'
+            return text[:max_length].rsplit(" ", 1)[0] + "..."
         return text
