@@ -27,12 +27,19 @@ class TestMessage:
             # Test with mixed prefixes
             ("[Test] Re: Hello World", "Hello World"),
             ("Re: [Test] Hello World", "Hello World"),
+            # Test with attachment indicators
+            ("Throckmorton letterbox [1 Attachment]", "Throckmorton letterbox"),
+            ("Meeting notes [2 Attachments]", "Meeting notes"),
+            ("Project Update [3 Attachments]", "Project Update"),
+            ("[IMPORTANT] Report [1 Attachment]", "Report"),
+            ("Re: Project Status [2 Attachments] ", "Project Status"),
             # Test with empty or whitespace subjects
             ("", DEFAULT_SUBJECT),
             ("   ", DEFAULT_SUBJECT),
             # Test with only prefixes
             ("[Test]", DEFAULT_SUBJECT),
             ("Re: ", DEFAULT_SUBJECT),
+            ("[1 Attachment]", DEFAULT_SUBJECT),
         ],
     )
     def test_normalize_subject(self, input_subject: str, expected_output: str):

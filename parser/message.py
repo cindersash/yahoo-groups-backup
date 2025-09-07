@@ -58,13 +58,23 @@ class Message:
 
     @classmethod
     def _normalize_subject(cls, subject: str) -> str:
-        """Normalize thread subject by decoding MIME, removing 'Re:', [text] prefixes, and extra whitespace."""
+        """Normalize thread subject by:
+        1. Decoding MIME-encoded parts
+        2. Removing 'Re:', 'Fwd:', etc. prefixes
+        3. Removing [text] prefixes
+        4. Removing [X Attachment(s)] suffixes
+        5. Normalizing whitespace
+        """
         if not subject:
             return ""
 
         # First decode any MIME-encoded parts
         subject = cls._decode_mime_header(subject)
 
+        # Remove any attachment indicators from the end (e.g., [1 Attachment], [2 Attachments], etc.)
+        subject = re.sub(r"\s*\[\s*\d+\s+Attachments?\s*]\s*$", "", subject, flags=re.IGNORECASE)
+
+        # Process prefixes and other normalizations
         stripped = True
         while stripped:
             stripped = False
