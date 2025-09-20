@@ -60,10 +60,6 @@ class MboxMessage(BaseMessage):
             refs.append(msg["In-Reply-To"])
         return [ref.strip("<>") for ref in refs if ref.strip()]
 
-    def _normalize_subject(self, subject: str) -> str:
-        """Normalize the subject by removing common reply prefixes and cleaning up."""
-        return normalize_subject(subject)
-
     @staticmethod
     def _extract_content(msg: EmailMessage) -> Optional[str]:
         """Extract and process the message content."""

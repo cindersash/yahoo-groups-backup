@@ -154,8 +154,8 @@ class SiteGenerator:
         # Generate HTML for each message in the thread
         messages_html = ""
         for i, message in enumerate(thread, 1):
-            # Clean up the HTML content
-            cleaned_content = self._clean_html_content(message.html_content)
+            # Get the already cleaned HTML content
+            cleaned_content = message.html_content
             
             # Format the message date
             message_date = message.date.strftime('%Y-%m-%d %H:%M:%S %Z') if message.date else 'Unknown date'
@@ -290,11 +290,20 @@ class SiteGenerator:
                 first_msg = messages[0]
                 last_msg = messages[-1]
 
+                started_by_str = ""
+                if first_msg.sender_name.strip():
+                    started_by_str += first_msg.sender_name.strip()
+                if first_msg.sender_email.strip():
+                    started_by_str += " (" + first_msg.sender_email.strip() + ")"
+
+                if not started_by_str:
+                    started_by_str = "Unknown"
+
                 months_html += f"""
                 <div class="thread-preview">
                     <h3><a href="{first_msg.url}">{self._escape_html(thread_name)}</a></h3>
                     <div class="thread-meta">
-                        Started by <strong>{(self._escape_html(first_msg.sender_name) + ' (' if first_msg.sender_name.strip() else '') + self._escape_html(first_msg.sender_email) + (')' if first_msg.sender_name.strip() else '') if first_msg.sender_email else 'Unknown'}</strong> | 
+                        Started by <strong>{started_by_str}</strong> | 
                         {len(messages)} message{'s' if len(messages) != 1 else ''} | 
                         Last reply: {last_msg.date.strftime('%Y-%m-%d') if last_msg.date else 'Unknown date'}
                     </div>

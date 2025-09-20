@@ -28,8 +28,8 @@ class JSONMessage(BaseMessage):
         self._msg_data = msg_data
         self._subject = decode_mime_header(msg_data.get('subject', DEFAULT_SUBJECT))
         self._normalized_subj = normalize_subject(self._subject)
-        self._sender_name = decode_mime_header(msg_data.get('authorName', ''))
-        self._sender_email = decode_mime_header(msg_data.get('from', '').split('<')[-1].rstrip('>'))
+        self._sender_name = msg_data.get('authorName', msg_data.get('profile', ''))
+        # For some reason, the email is not saved in the JSON data
         self._date = self._parse_date()
         self._topic_id = msg_data.get('topicId')
         self._html_content = self._clean_html_content(msg_data.get('messageBody', ''))
@@ -63,7 +63,7 @@ class JSONMessage(BaseMessage):
         
     @property
     def sender_email(self) -> str:
-        return self._sender_email
+        return ""
         
     @property
     def date(self) -> datetime:

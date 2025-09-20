@@ -44,7 +44,7 @@ class ProgressTracker:
     def _print_status(self, message: str = None) -> None:
         """Print the current status, but not too frequently."""
         current_time = time.time()
-        if current_time - self.last_update < 1.0 and not message:
+        if current_time - self.last_update < 5.0 and not message:
             return
             
         self.last_update = current_time
