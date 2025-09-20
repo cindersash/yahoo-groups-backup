@@ -156,11 +156,11 @@ def process_json_directory(json_dir: str) -> Dict[str, List[BaseMessage]]:
                         
                     valid_count += 1
 
-                    # Group by normalized subject (thread)
-                    if msg.normalized_subject not in threads:
-                        threads[msg.normalized_subject] = []
-
-                    threads[msg.normalized_subject].append(msg)
+                    # Group by topic_id
+                    topic_id = msg.topic_id or f'single_{msg.id}'
+                    if topic_id not in threads:
+                        threads[topic_id] = []
+                    threads[topic_id].append(msg)
                     
                 except (KeyError, ValueError) as e:
                     print(f"\nError processing message in {filename}: {e}")
@@ -172,12 +172,27 @@ def process_json_directory(json_dir: str) -> Dict[str, List[BaseMessage]]:
             print(f"\nError reading {filename}: {e}")
             continue
 
-    # Sort messages in each thread by date
-    for thread_msgs in threads.values():
-        thread_msgs.sort(key=lambda x: x.date if x.date else datetime.min)
+    # Sort messages in each thread by date and update thread names with first message's subject
+    updated_threads = {}
+    for topic_id, messages in threads.items():
+        # Sort messages by date
+        messages_sorted = sorted(messages, key=lambda x: x.date if x.date else datetime.min)
+        
+        # Use the first message's subject as the thread name
+        if messages_sorted and messages_sorted[0].subject:
+            thread_name = messages_sorted[0].subject
+            # Ensure thread name is unique
+            base_name = thread_name
+            counter = 1
+            while thread_name in updated_threads:
+                thread_name = f"{base_name} ({counter})"
+                counter += 1
+            updated_threads[thread_name] = messages_sorted
+        else:
+            updated_threads[f"Thread {topic_id}"] = messages_sorted
+    
+    threads = updated_threads
 
-    # Print final report
-    total_messages = sum(len(msgs) for msgs in threads.values())
     progress.final_report()
     print(f"Grouped into {len(threads)} threads")
     return threads
