@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from . import constants
-from .message import BaseMessage
+from .base_message import BaseMessage
 from .utils import slugify
 
 
