@@ -4,6 +4,7 @@ JSON Message class for Yahoo Groups JSON data.
 This module provides the JSONMessage class which implements the BaseMessage interface
 to handle message data from Yahoo Groups JSON exports.
 """
+import html
 from datetime import datetime
 from typing import Dict, Any, List
 
@@ -26,9 +27,9 @@ class JSONMessage(BaseMessage):
         """
         self._id = msg_id
         self._msg_data = msg_data
-        self._subject = decode_mime_header(msg_data.get('subject', DEFAULT_SUBJECT))
+        self._subject = html.unescape(decode_mime_header(msg_data.get('subject', DEFAULT_SUBJECT)))
         self._normalized_subj = normalize_subject(self._subject)
-        self._sender_name = msg_data.get('authorName', msg_data.get('profile', ''))
+        self._sender_name = msg_data.get('authorName') or msg_data.get('profile')
         # For some reason, the email is not saved in the JSON data
         self._date = self._parse_date()
         self._topic_id = msg_data.get('topicId')
