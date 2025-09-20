@@ -161,19 +161,14 @@ class SiteGenerator:
             message_date = message.date.strftime('%Y-%m-%d %H:%M:%S %Z') if message.date else 'Unknown date'
             
             # Format the sender info
-            sender_info = []
-            if message.sender_name.strip():
-                sender_info.append(self._escape_html(message.sender_name))
-            if message.sender_email:
-                sender_info.append(f"({self._escape_html(message.sender_email)})")
-            sender_display = ' '.join(sender_info) if sender_info else 'Unknown sender'
+            sender_str = self._get_sender_str(message)
             
             messages_html += f"""
             <div class="message {'first-message' if i == 1 else 'reply-message'}">
                 <div class="message-header">
                     <h3 class="message-subject">{self._escape_html(message.subject)}</h3>
                     <div class="message-meta">
-                        From: <strong>{sender_display}</strong> | 
+                        From: <strong>{sender_str}</strong> | 
                         Date: {message_date}
                     </div>
                 </div>
@@ -237,6 +232,20 @@ class SiteGenerator:
         for msg in thread:
             msg.url = f"messages/{filename}"
 
+    @staticmethod
+    def _get_sender_str(message: BaseMessage) -> str:
+        sender_str = ""
+
+        if message.sender_name.strip():
+            sender_str += message.sender_name.strip()
+        if message.sender_email.strip():
+            sender_str += " (" + message.sender_email.strip() + ")"
+
+        if not sender_str:
+            sender_str = "Unknown"
+
+        return sender_str
+
     def _generate_index_page(
         self, threads: dict[str, List[BaseMessage]], page: int = 1, threads_per_page: int = 25
     ) -> None:
@@ -289,15 +298,7 @@ class SiteGenerator:
 
                 first_msg = messages[0]
                 last_msg = messages[-1]
-
-                started_by_str = ""
-                if first_msg.sender_name.strip():
-                    started_by_str += first_msg.sender_name.strip()
-                if first_msg.sender_email.strip():
-                    started_by_str += " (" + first_msg.sender_email.strip() + ")"
-
-                if not started_by_str:
-                    started_by_str = "Unknown"
+                started_by_str = self._get_sender_str(first_msg)
 
                 months_html += f"""
                 <div class="thread-preview">

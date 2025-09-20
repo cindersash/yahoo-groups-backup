@@ -30,6 +30,7 @@ class JSONMessage(BaseMessage):
         self._subject = html.unescape(decode_mime_header(msg_data.get('subject', DEFAULT_SUBJECT)))
         self._normalized_subj = normalize_subject(self._subject)
         self._sender_name = msg_data.get('authorName') or msg_data.get('profile')
+        self._sender_name = html.unescape(self._sender_name)
         # For some reason, the email is not saved in the JSON data
         self._date = self._parse_date()
         self._topic_id = msg_data.get('topicId')
