@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Yahoo Groups Mbox to Static Website Converter
+Yahoo Groups to Static Website Converter
 
-This script converts mbox file containing Yahoo Groups messages into a static website.
+This script converts Yahoo Groups messages (from mbox or JSON) into a static website.
 """
 
 import argparse
@@ -10,30 +10,20 @@ import mailbox
 import os
 import sys
 import time
-from datetime import datetime
-from typing import List
+from typing import List, Dict
 
+from .base_message import BaseMessage
 from .generator import SiteGenerator
-from .message import Message
+from .json_processor import process_json_directory
+from .message import MboxMessage
 
 
-def _is_valid_message(message: Message) -> bool:
-    # The first messages should be from 1998. Anything earlier is probably corrupted.
-    if message.date:
-        # Make the comparison timezone-aware by localizing the cutoff date to the message timezone
-        cutoff_date = datetime(1998, 1, 1, tzinfo=message.date.tzinfo)
-        if message.date < cutoff_date:
-            return False
-
-    return bool(message.html_content and message.date)
-
-
-def process_mbox(mbox_path: str) -> dict[str, List[Message]]:
+def process_mbox(mbox_path: str) -> Dict[str, List[BaseMessage]]:
     """
     Process mbox file and return a dictionary where keys are thread names
     and values are lists of Message objects in that thread, sorted by date.
     """
-    threads = {}
+    threads: Dict[str, List[BaseMessage]] = {}
     msg_id = 1
     processed_count = 0
     start_time = time.time()
@@ -55,19 +45,18 @@ def process_mbox(mbox_path: str) -> dict[str, List[Message]]:
         total_messages = len(mbox)
         print(f"Found {total_messages} messages to process")
 
-        for msg in mbox:
+        for message in mbox:
             try:
-                message = Message(msg_id, msg)
-
-                if _is_valid_message(message):
-                    thread_key = message.normalized_subject or "(No subject)"
-                    if thread_key not in threads:
-                        threads[thread_key] = []
-                    threads[thread_key].append(message)
-
-                    msg_id += 1
+                msg = MboxMessage(msg_id, message)
+                if _is_valid_message(msg):
+                    if msg.normalized_subject not in threads:
+                        threads[msg.normalized_subject] = []
+                    threads[msg.normalized_subject].append(msg)
+                    processed_count += 1
                 else:
                     invalid_messages += 1
+
+                msg_id += 1
 
                 processed_count += 1
 
@@ -77,7 +66,7 @@ def process_mbox(mbox_path: str) -> dict[str, List[Message]]:
                     rate = processed_count / elapsed if elapsed > 0 else 0
                     print(
                         f"  Processed {processed_count}/{total_messages} messages "
-                        f"({processed_count/total_messages:.1%}) - {rate:.1f} msg/sec"
+                        f"({processed_count / total_messages:.1%}) - {rate:.1f} msg/sec"
                     )
 
             except Exception as e:
@@ -99,23 +88,25 @@ def process_mbox(mbox_path: str) -> dict[str, List[Message]]:
 
 def main():
     """Main entry point for the script."""
-    parser = argparse.ArgumentParser(description="Convert Yahoo Groups mbox to static website.")
-    parser.add_argument("mbox_file", help="Path to the mbox file")
-    parser.add_argument("--forum-name", required=True, help="Name of the forum (used in page titles)")
-    parser.add_argument("-o", "--output", default="output", help="Output directory (default: output)")
+    parser = argparse.ArgumentParser(description='Convert Yahoo Groups data to static website')
 
+    # Create a mutually exclusive group for input types
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument('--mbox', help='Path to the mbox file')
+    input_group.add_argument('--json-dir', help='Path to directory containing JSON files')
+
+    parser.add_argument('-o', '--output', default='output',
+                        help='Output directory (default: output)')
+    parser.add_argument("--forum-name", required=True, help="Name of the forum (used in page titles)")
     args = parser.parse_args()
 
-    # Process mbox file
-    threads = process_mbox(args.mbox_file)
-
-    if not threads:
-        print("No valid messages found in the mbox file.")
-        sys.exit(1)
-
-    total_messages = sum(len(messages) for messages in threads.values())
-    print(f"Processed {total_messages} messages in {len(threads)} threads.")
-    print(f"Generating static website in: {args.output}")
+    # Process the input based on type
+    if args.mbox:
+        threads = process_mbox(args.mbox)
+    elif args.json_dir:
+        threads = process_json_directory(args.json_dir)
+    else:
+        parser.error('Either --mbox or --json-dir must be specified')
 
     # Generate the static website using SiteGenerator
     generator = SiteGenerator(args.output, args.forum_name)

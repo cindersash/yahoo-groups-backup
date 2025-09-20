@@ -1,118 +1,41 @@
-import email
-import re
 from datetime import datetime
-from email.header import decode_header
+from email.message import Message as EmailMessage
 from email.utils import parseaddr, parsedate_to_datetime
-from typing import Optional, Tuple, List, Union
+from typing import List, Optional
 
 from bs4 import BeautifulSoup
 from dateutil import tz
 
-from parser.constants import PREFIXES_TO_STRIP
+from parser.base_message import BaseMessage
+from parser.message_utils import (
+    decode_mime_header,
+    normalize_subject,
+    DEFAULT_SUBJECT
+)
 
-DEFAULT_SUBJECT = "(No subject)"
-BRACKET_REGEX = re.compile(r"^\s*\[.*?]\s*")
 
+class MboxMessage(BaseMessage):
+    """Represents an email message from an mbox file with its metadata and content."""
 
-class Message:
-    """Represents an email message with its metadata and content."""
-
-    def __init__(self, msg_id: int, msg: email.message.Message):
-        self.id = msg_id
-        self.subject = self._get_header(msg, "Subject", DEFAULT_SUBJECT)
-        self.normalized_subject = self._normalize_subject(self.subject)
-        self.sender_name, self.sender_email = parseaddr(msg["From"])
-        self.date = self._parse_date(msg)
-        self.references = self._get_references(msg)
-        self.html_content = self._extract_content(msg)
-        self.url = f"messages/{self.id}.html"
-
-    @classmethod
-    def _decode_mime_header(cls, header: str) -> str:
-        """Decode MIME-encoded header values."""
-        if not header:
-            return ""
-
-        try:
-            # Decode the header parts
-            decoded_parts = []
-            for part, encoding in decode_header(header):
-                if isinstance(part, bytes):
-                    # Try to decode with the specified encoding, fall back to utf-8 with replace
-                    try:
-                        decoded_part = part.decode(encoding or "utf-8", errors="replace")
-                    except (LookupError, UnicodeError):
-                        # If the encoding is unknown or invalid, try utf-8 with replace
-                        decoded_part = part.decode("utf-8", errors="replace")
-                    decoded_parts.append(decoded_part)
-                else:
-                    decoded_parts.append(part)
-
-            # Join all parts, normalize whitespace, and remove any leading underscores
-            result = " ".join(str(part).strip() for part in decoded_parts if part)
-            # Remove any leading underscores that might be left after decoding
-            return result.lstrip("_").strip()
-        except Exception as e:
-            # If anything goes wrong, return the original string with leading underscores removed
-            return str(header).lstrip("_").strip()
-
-    @classmethod
-    def _normalize_subject(cls, subject: str) -> str:
-        """Normalize thread subject by:
-        1. Decoding MIME-encoded parts
-        2. Extracting original subject from parenthetical references (e.g., '... (was Re: [group] Re: Original Subject)')
-        3. Removing 'Re:', 'Fwd:', etc. prefixes
-        4. Removing [text] prefixes
-        5. Removing [X Attachment(s)] suffixes
-        6. Normalizing whitespace
-        """
-        if not subject:
-            return ""
-
-        # First decode any MIME-encoded parts
-        subject = cls._decode_mime_header(subject)
-
-        # Extract content from parenthetical references like "... (was Original Subject)"
-        match = re.search(r"\(\s*was\s+([^)]*)\)", subject, flags=re.IGNORECASE)
-        if match:
-            subject = match.group(1).strip()
-
-        # Remove any attachment indicators from the end (e.g., [1 Attachment], [2 Attachments], etc.)
-        subject = re.sub(r"\s*\[\s*\d+\s+Attachments?\s*]\s*$", "", subject, flags=re.IGNORECASE)
-
-        # Process prefixes and other normalizations
-        stripped = True
-        while stripped:
-            stripped = False
-
-            # Remove [bracketed] prefixes
-            subject = re.sub(BRACKET_REGEX, "", subject)
-
-            # Check for and remove reply/forward prefixes (Re:, Fwd:, etc.)
-            lower_subject = subject.lower()
-            for p in PREFIXES_TO_STRIP:
-                if lower_subject.startswith(p.lower()):
-                    subject = subject[len(p) :].lstrip()  # remove the prefix + leading spaces
-                    stripped = True
-                    break  # check prefixes again from the start
-
-            # If we still have [bracketed] content, strip it in the next iteration
-            if re.match(BRACKET_REGEX, subject):
-                stripped = True
-
-        subject = subject.strip()
-
-        return subject if subject else DEFAULT_SUBJECT
+    def __init__(self, msg_id: int, msg: EmailMessage):
+        self._id = msg_id
+        self._subject = self._get_header(msg, "Subject", DEFAULT_SUBJECT)
+        self._normalized_subject = self._normalize_subject(self.subject)
+        self._sender_name, self._sender_email = parseaddr(msg["From"])
+        self._date = self._parse_date(msg)
+        self._references = self._get_references(msg)
+        self._html_content = self._extract_content(msg)
+        self._url = f"messages/{self.id}.html"
 
     @staticmethod
-    def _get_header(msg: email.message.Message, header: str, default: str = "") -> str:
+    def _get_header(msg: EmailMessage, header: str, default: str = "") -> str:
         """Safely get a header from the email message."""
         value = msg.get(header, "")
         if not value:
             return default
-        return str(value)
+        return decode_mime_header(str(value))
 
-    def _parse_date(self, msg: email.message.Message) -> Optional[datetime]:
+    def _parse_date(self, msg: EmailMessage) -> Optional[datetime]:
         """Parse the date from the email message and ensure it's timezone-aware."""
         date_str = self._get_header(msg, "Date")
         if not date_str:
@@ -128,7 +51,7 @@ class Message:
             return None
 
     @staticmethod
-    def _get_references(msg: email.message.Message) -> list[str]:
+    def _get_references(msg: EmailMessage) -> list[str]:
         """Extract message references for threading."""
         refs = []
         if "References" in msg:
@@ -137,8 +60,12 @@ class Message:
             refs.append(msg["In-Reply-To"])
         return [ref.strip("<>") for ref in refs if ref.strip()]
 
+    def _normalize_subject(self, subject: str) -> str:
+        """Normalize the subject by removing common reply prefixes and cleaning up."""
+        return normalize_subject(subject)
+
     @staticmethod
-    def _extract_content(msg: email.message.Message) -> Optional[str]:
+    def _extract_content(msg: EmailMessage) -> Optional[str]:
         """Extract and process the message content."""
         # Try to get HTML content first
         html_part = None
@@ -174,3 +101,46 @@ class Message:
             return f'<div class="plaintext-content">{text_part}</div>'
 
         return None
+
+    # Property implementations from BaseMessage
+    @property
+    def id(self) -> int:
+        return self._id
+
+    @property
+    def subject(self) -> str:
+        return self._subject
+
+    @property
+    def normalized_subject(self) -> str:
+        return self._normalized_subject
+
+    @property
+    def sender_name(self) -> str:
+        return self._sender_name
+
+    @property
+    def sender_email(self) -> str:
+        return self._sender_email
+
+    @property
+    def date(self) -> datetime:
+        return self._date
+
+    @property
+    def html_content(self) -> str:
+        return self._html_content
+
+    @property
+    def references(self) -> List[str]:
+        return self._references
+
+    @property
+    def url(self) -> str:
+        """Return the URL of the message."""
+        return self._url
+
+    @url.setter
+    def url(self, value: str) -> None:
+        """Set the URL of the message."""
+        self._url = value

@@ -1,6 +1,9 @@
 """Utility functions for the Yahoo Groups Mbox to Static Website Converter."""
 
 import re
+from datetime import datetime
+
+from parser.base_message import BaseMessage
 
 
 def slugify(text: str) -> str:
@@ -27,3 +30,13 @@ def slugify(text: str) -> str:
     text = re.sub(r"-+", "-", text)
     # Remove leading and trailing hyphens
     return text.strip("-")
+
+def _is_valid_message(message: BaseMessage) -> bool:
+    # The first messages should be from 1998. Anything earlier is probably corrupted.
+    if message.date:
+        # Make the comparison timezone-aware by localizing the cutoff date to the message timezone
+        cutoff_date = datetime(1998, 1, 1, tzinfo=message.date.tzinfo)
+        if message.date < cutoff_date:
+            return False
+
+    return bool(message.html_content and message.date)
