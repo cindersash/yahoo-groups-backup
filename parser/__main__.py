@@ -12,10 +12,11 @@ import sys
 import time
 from typing import List, Dict
 
+from parser.utils import _is_valid_message
 from .base_message import BaseMessage
 from .generator import SiteGenerator
 from .json_processor import process_json_directory
-from .message import MboxMessage
+from .mbox_message import MboxMessage
 
 
 def process_mbox(mbox_path: str) -> Dict[str, List[BaseMessage]]:
