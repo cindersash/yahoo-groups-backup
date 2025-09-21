@@ -257,9 +257,11 @@ class SiteGenerator:
             page: Current page number (1-based)
             threads_per_page: Number of threads to display per page
         """
-        # Convert threads to a list and sort by most recent message date
+        # Convert threads to a list and sort by the date of the first message
         sorted_threads = sorted(
-            threads.items(), key=lambda x: x[1][-1].date if x[1] and x[1][-1].date else datetime.min, reverse=True
+            threads.items(), 
+            key=lambda x: x[1][0].date if x[1] and x[1][0].date else datetime.min, 
+            reverse=True
         )
 
         # Calculate pagination
@@ -278,12 +280,12 @@ class SiteGenerator:
             if not messages:
                 continue
 
-            # Get the most recent message date for sorting
-            last_message = messages[-1]
-            if not last_message.date:
+            # Get the first message date for grouping
+            first_message = messages[0]
+            if not first_message.date:
                 continue
 
-            month_year = last_message.date.strftime("%B %Y")
+            month_year = first_message.date.strftime("%B %Y")
             if month_year not in threads_by_month:
                 threads_by_month[month_year] = []
             threads_by_month[month_year].append((thread_name, messages))
@@ -306,7 +308,8 @@ class SiteGenerator:
                     <div class="thread-meta">
                         Started by <strong>{started_by_str}</strong> | 
                         {len(messages)} message{'s' if len(messages) != 1 else ''} | 
-                        Last reply: {last_msg.date.strftime('%Y-%m-%d') if last_msg.date else 'Unknown date'}
+                        First message: {first_msg.date.strftime('%Y-%m-%d') if first_msg.date else 'Unknown date'}
+                        {' | Last message: ' + (last_msg.date.strftime('%Y-%m-%d') if last_msg.date else 'Unknown date') if len(messages) > 1 else ''}
                     </div>
                     <div class="message-snippet">
                         {self._get_snippet(first_msg.html_content, 200) if first_msg.html_content else ''}
