@@ -98,7 +98,7 @@ def main():
     input_group.add_argument('--json-dir', help='Path to directory containing JSON files')
     input_group.add_argument('--email-json-dir', help='Path to directory containing email JSON files')
 
-    parser.add_argument('-o', '--output', default='output',
+    parser.add_argument('-o', '--output', default=None,
                         help='Output directory (default: output)')
     parser.add_argument("--forum-name", required=True, help="Name of the forum (used in page titles)")
     args = parser.parse_args()

@@ -6,7 +6,7 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -19,7 +19,7 @@ from .utils import slugify
 class SiteGenerator:
     """Handles the generation of static website files from message data."""
 
-    def __init__(self, output_dir: str, forum_name: str):
+    def __init__(self, output_dir: Optional[str], forum_name: str):
         """Initialize the SiteGenerator with output directory and template environment.
 
         Args:
@@ -30,7 +30,11 @@ class SiteGenerator:
         safe_forum_name = slugify(forum_name)
 
         # Set up directory structure with forum subdirectory
-        self.output_dir = Path(output_dir) / safe_forum_name
+        if output_dir is None:
+            self.output_dir = Path("output") / safe_forum_name
+        else:
+            self.output_dir = Path(output_dir)
+
         self.forum_name = forum_name
         self.messages_dir = self.output_dir / "messages"
         self.static_dir = self.output_dir / "static"
