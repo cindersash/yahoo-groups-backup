@@ -12,6 +12,7 @@ import sys
 import time
 from typing import List, Dict
 
+from parser.email_json_processor import process_email_json_directory
 from parser.utils import _is_valid_message
 from .base_message import BaseMessage
 from .generator import SiteGenerator
@@ -95,6 +96,7 @@ def main():
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument('--mbox', help='Path to the mbox file')
     input_group.add_argument('--json-dir', help='Path to directory containing JSON files')
+    input_group.add_argument('--email-json-dir', help='Path to directory containing email JSON files')
 
     parser.add_argument('-o', '--output', default='output',
                         help='Output directory (default: output)')
@@ -106,8 +108,10 @@ def main():
         threads = process_mbox(args.mbox)
     elif args.json_dir:
         threads = process_json_directory(args.json_dir)
+    elif args.email_json_dir:
+        threads = process_email_json_directory(args.email_json_dir)
     else:
-        parser.error('Either --mbox or --json-dir must be specified')
+        parser.error('Either --mbox or --json-dir or --email-json-dir must be specified')
 
     # Generate the static website using SiteGenerator
     generator = SiteGenerator(args.output, args.forum_name)
